@@ -276,677 +276,2307 @@ body {
 .q-guess-prompt.vis { display: block; }
 
 /* Log */
-.a-entry { display: flex; align-items: flex-start; gap: 7px; padding: 6px 0; border-bottom: 1px solid var(--paper3); font-size: 11px; } const allScores=S.cells.flat().filter(c=>c.history.length>0).map(c=>c.history[c.history.length-1].score); if(!allScores.length) return 'Try assigning different conditions to different regions so you can compare them side by side.'; const spread=Math.max(...allScores)-Math.min(...allScores); if(spread<15) return 'This garden looks fairly flat. Try changing one condition at a time across larger regions so small differences become easier to notice.'; if(S.topHeight>S.goal.height*0.82) return `You were close (best height: ${Math.round(S.topHeight)}). Next time, commit to your strongest combination earlier and let the compounding growth work for you.`; return 'Try creating clearer side-by-side tests. When two regions differ in exactly one condition, it becomes much easier to see which variable is doing the work.'; }
-  return { goSetup, start, retry, randSeed, runDay, clearSel };
+.a-entry { display: flex; align-items: flex-start; gap: 7px; padding: 6px 0; border-bottom: 1px solid var(--paper3); font-size: 11px; }
+.a-entry:last-child { border-bottom: none; }
+.a-num  { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight:600; margin-top: 1px; }
+.a-num.gold-q   { background: var(--gold-bg);   color: var(--gold);   border: 1px solid var(--gold-bd); }
+.a-num.silver-q { background: var(--silver-bg); color: var(--silver); border: 1px solid var(--silver-bd); }
+.a-num.bronze-q { background: var(--bronze-bg); color: var(--bronze); border: 1px solid var(--bronze-bd); }
+.a-text { color: var(--ink-mid); line-height: 1.45; flex: 1; }
+.a-ans  { font-weight:600; }
+.a-ans.yes { color: var(--leaf-dark); }
+.a-ans.no  { color: var(--red-soft); }
+
+/* Outcome */
+.outcome-wrap { max-width: 520px; margin: 32px auto; text-align: center; }
+.outcome-icon  { font-size: 52px; margin-bottom: 10px; }
+.outcome-title { font-family: 'IBM Plex Serif', Georgia, serif; font-size: 26px; margin-bottom: 6px; }
+.outcome-sub   { color: var(--ink-soft); font-size: 14px; margin-bottom: 10px; }
+.outcome-tier  { margin-bottom: 20px; display: flex; justify-content: center; }
+.outcome-title.win  { color: var(--leaf-dark); }
+.outcome-title.fail { color: var(--red-soft); }
+
+/* Animations */
+@keyframes fadein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+@keyframes art-sway { 0%,100%{transform:rotate(-2deg)} 50%{transform:rotate(2deg)} }
+.fadein { animation: fadein 0.32s ease-out; }
+
+@media (max-width: 820px) { .pf-layout { grid-template-columns: 1fr; } }
+
+
+/* ════════════════════════════════════════
+   GARDEN
+   ════════════════════════════════════════ */
+.game-layout { display:grid; grid-template-columns: 1fr 268px; gap:18px; align-items:start; }
+.status-bar { display:flex; gap:16px; align-items:center; flex-wrap:wrap; padding:9px 14px; background:var(--paper); border-radius:10px; box-shadow:0 1px 6px var(--shadow); margin-bottom:10px; font-size:13px; }
+.goal-bar { display:flex; align-items:center; gap:12px; padding:9px 14px; background:var(--paper); border-radius:10px; box-shadow:0 1px 6px var(--shadow); margin-bottom:14px; font-size:13px; border:2px solid var(--paper3); }
+.goal-bar.urgent { border-color:var(--red-soft); background:#fdf0ec; }
+.goal-bar.achieved { border-color:var(--leaf-mid); background:#eef8ee; }
+.goal-label { font-weight:600; color:var(--ink); white-space:nowrap; font-size:12px; }
+.goal-days { white-space:nowrap; font-size:12px; color:var(--ink-soft); }
+.goal-days.urgent { color:var(--red-soft); font-weight:600; }
+.goal-track { flex:1; height:11px; background:var(--paper3); border-radius:6px; overflow:hidden; }
+.goal-fill { height:100%; border-radius:6px; transition: width 0.4s ease; background:linear-gradient(90deg,var(--leaf-mid),var(--leaf-light)); }
+.goal-fill.urgent { background: linear-gradient(90deg,var(--red-soft),var(--red-pale)); }
+.garden-card { background:var(--paper); border-radius:14px; box-shadow:0 3px 16px var(--shadow), 0 0 0 1px var(--paper3); padding:16px; margin-bottom:14px; }
+.garden-hint { font-family:'IBM Plex Serif', Georgia, serif; font-size:12px; color:var(--ink-soft); margin-bottom:12px; }
+.sky-strip { height:26px; border-radius:8px 8px 0 0; background:linear-gradient(180deg,#c8e8f8,#daf0f4); position:relative; overflow:hidden; }
+.sky-sun { position:absolute; top:3px; right:20px; width:20px; height:20px; border-radius:50%; background: radial-gradient(circle,#ffe090,#ffb830); box-shadow:0 0 12px #ffb83078; }
+.sky-cloud { position:absolute; background:rgba(255,255,255,0.82); border-radius:20px; }
+.garden-wrap { position:relative; background:linear-gradient(180deg,#b8884a,#9e6e3a); border-radius:0 0 8px 8px; padding:10px; overflow:auto; }
+.garden-grid { display:grid; gap:5px; position:relative; }
+#g-sel-rect { position:absolute; pointer-events:none; border:2px dashed #3a8a50; background:rgba(58,138,80,0.15); border-radius:4px; display:none; z-index:10; }
+.pcell { position:relative; background:#7a5230; border-radius:6px; border:2px solid transparent; overflow:hidden; transition:border-color 0.15s; cursor:crosshair; flex-shrink:0; }
+.pcell.uninit { background:#e8dfc8; border-color:#c8b898; }
+.pcell.sel { border-color:#3a8a50; box-shadow:0 0 0 2px rgba(58,138,80,0.28); }
+.pcell.thriving { border-color: var(--leaf-light); }
+.pcell-soil { position:absolute; bottom:0; left:0; right:0; height:18px; border-radius:0 0 5px 5px; background:linear-gradient(180deg,#9e6e44 0%,#5c3d1e 100%); z-index:1; }
+.pcell-air { position:absolute; bottom:18px; left:0; right:0; top:0; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; }
+.uninit-mark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:0.3; z-index:2; }
+.score-badge { position:absolute; top:3px; right:3px; font-size:9px; font-weight:600; background:rgba(255,255,255,0.88); color:var(--ink); border-radius:4px; padding:1px 4px; line-height:1.4; pointer-events:none; z-index:3; }
+.score-badge.hi { color:var(--leaf-dark); } .score-badge.md { color:#7a6010; } .score-badge.lo { color:var(--red-soft); }
+.action-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.sidebar-card { background:var(--paper); border-radius:12px; box-shadow:0 2px 10px var(--shadow); padding:13px 15px; margin-bottom:12px; }
+.sidebar-title { font-family:'IBM Plex Serif', Georgia, serif; font-size:14px; font-weight:600; color:var(--leaf-dark); margin-bottom:9px; }
+.pleg-item { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:11px; color:var(--ink-soft); }
+.pleg-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+.hist-entry { border-bottom:1px solid var(--paper3); padding:6px 0; font-size:11px; }
+.hist-entry:last-child { border-bottom:none; }
+.hist-day { color:var(--leaf-mid); font-weight:600; margin-bottom:2px; font-size:11px; }
+.hist-msg { color:var(--ink-soft); line-height:1.5; }
+.popup-overlay { position:fixed; inset:0; z-index:200; display:none; }
+.popup-overlay.vis { display:block; }
+.popup { position:fixed; background:var(--paper); border-radius:14px; box-shadow:0 8px 40px var(--shadow2), 0 0 0 1px var(--paper3); padding:18px 20px; z-index:201; min-width:250px; display:none; }
+.popup-header { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.popup-header h3 { font-family:'IBM Plex Serif', Georgia, serif; font-size:15px; font-weight:600; color:var(--leaf-dark); }
+.popup-param { margin-bottom:12px; }
+.popup-param label { display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+.popup-pills { display:flex; gap:5px; flex-wrap:wrap; }
+.ppill { padding:4px 10px; font-size:12px; font-weight:600; border:2px solid var(--paper3); border-radius:20px; color:var(--ink-soft); background:var(--paper2); cursor:pointer; transition:all 0.12s; }
+.ppill:hover { border-color:var(--leaf-mid); color:var(--leaf-dark); }
+.ppill.sel { border-color:var(--leaf-mid); color:var(--leaf-dark); background:var(--white); }
+.ppill.nochange { font-style:italic; font-weight:400; color:var(--ink-pale); }
+.popup-btns { display:flex; gap:8px; margin-top:14px; }
+.htip { position:fixed; background:var(--paper); border-radius:10px; border:1px solid var(--paper3); box-shadow:0 6px 24px var(--shadow2); padding:12px 14px; z-index:300; pointer-events:none; min-width:200px; display:none; }
+.htip.vis { display:block; }
+.htip-title { font-family:'IBM Plex Serif', Georgia, serif; font-size:12px; font-weight:600; color:var(--ink-mid); margin-bottom:8px; }
+.htip table { border-collapse:collapse; width:100%; }
+.htip th { font-size:9px; font-weight:600; color:var(--leaf-mid); padding:0 8px 5px 0; border-bottom:2px solid var(--paper3); white-space:nowrap; }
+.htip td { font-size:10px; color:var(--ink-soft); padding:3px 8px 3px 0; border-bottom:1px solid var(--paper3); white-space:nowrap; }
+.htip td.val { color:var(--ink); font-weight:600; }
+.htip td.score-hi { color:var(--leaf-dark); font-weight:600; }
+.htip td.score-md { color:#7a6010; font-weight:600; }
+.htip td.score-lo { color:var(--red-soft); font-weight:600; }
+
+/* ════════════════════════════════════════
+   OUTBREAK
+   ════════════════════════════════════════ */
+.ob-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start; }
+.ob-status { margin-bottom:10px; }
+.ob-hours { display:inline-flex; gap:3px; vertical-align:middle; margin-left:6px; flex-wrap:wrap; }
+.ob-pip { width:9px; height:12px; border-radius:2px; background:var(--leaf-mid); display:inline-block; }
+.ob-pip.used { background:var(--paper3); }
+.ob-map-card { background:var(--paper); border-radius:14px; box-shadow:0 3px 16px var(--shadow), 0 0 0 1px var(--paper3); padding:10px; margin-bottom:12px; }
+#ob-map { display:block; width:100%; height:auto; aspect-ratio:880/470; border-radius:9px; touch-action:manipulation; }
+.ob-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft); padding:8px 4px 0; }
+.ob-leg { display:inline-flex; align-items:center; gap:5px; }
+.ob-leg-check { width:12px; height:12px; border-radius:50%; background:var(--leaf-mid); color:#fff; font-size:8px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; }
+.ob-dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.ob-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.ob-deadline { font-size:12px; color:var(--ink-soft); font-weight:600; margin-left:auto; }
+.ob-card { background:var(--paper); border-radius:12px; box-shadow:0 2px 10px var(--shadow); padding:13px 15px; margin-bottom:12px; }
+.ob-card-title { font-family:'IBM Plex Serif', Georgia, serif; font-size:14px; font-weight:600; color:var(--leaf-dark); margin-bottom:4px; }
+.ob-card-sub { font-size:11px; color:var(--ink-soft); line-height:1.5; margin-bottom:10px; }
+.ob-muted { font-size:11px; color:var(--ink-pale); }
+/* evidence */
+.ob-ev-table { width:100%; border-collapse:collapse; font-size:12px; }
+.ob-ev-table th { font-size:10px; font-weight:600; color:var(--ink-soft); text-align:left; padding:0 8px 6px 0; border-bottom:2px solid var(--paper3); }
+.ob-ev-table td { padding:7px 8px 7px 0; border-bottom:1px solid var(--paper3); color:var(--ink-mid); vertical-align:middle; }
+.ob-ev-row { cursor:pointer; }
+.ob-ev-row:hover td { background:rgba(74,144,64,0.05); }
+.ob-ev-row.sel td { background:rgba(232,160,48,0.13); }
+.ob-ev-row td:first-child { font-weight:600; color:var(--ink); padding-left:6px; border-radius:6px 0 0 6px; }
+.ob-free { font-size:9px; font-weight:600; color:var(--leaf-dark); background:rgba(74,144,64,0.12); border-radius:8px; padding:1px 6px; margin-left:4px; }
+.ob-rate { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.ob-bar { width:64px; height:8px; background:var(--paper3); border-radius:4px; overflow:hidden; flex-shrink:0; }
+.ob-bar > div { height:100%; background:#d4553a; border-radius:4px; }
+.ob-cmp { margin-top:14px; padding-top:12px; border-top:1px dashed var(--paper3); }
+.ob-cmp-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; font-weight:600; color:var(--ink-mid); margin-bottom:10px; }
+.ob-select { background:var(--white); border:2px solid var(--paper3); border-radius:8px; padding:4px 8px; font-family:'IBM Plex Sans', system-ui, sans-serif; font-size:12px; font-weight:600; color:var(--ink); }
+.ob-cmp-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; max-width:520px; }
+.ob-cell { background:var(--paper2); border:2px solid var(--paper3); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--ink-mid); display:flex; flex-direction:column; gap:4px; }
+.ob-cell .ob-bar { width:100%; }
+.ob-cell.key { border-color:var(--flower); background:#fdf8ee; }
+.ob-cell-lbl { font-size:10px; font-weight:600; color:var(--ink-soft); }
+.ob-cmp-note { font-size:11px; color:var(--ink-soft); line-height:1.55; margin-top:8px; max-width:520px; }
+#ob-curve { display:block; width:100%; height:130px; }
+/* selection */
+.ob-sel-title { font-family:'IBM Plex Serif', Georgia, serif; font-size:15px; font-weight:600; color:var(--ink); margin-bottom:3px; }
+.ob-sel-sub { font-size:11px; color:var(--ink-soft); margin-bottom:8px; }
+.ob-sel-exp { font-size:12px; font-weight:600; color:var(--ink-mid); background:var(--paper2); border-radius:8px; padding:6px 9px; margin-bottom:8px; }
+.ob-res-list { margin-bottom:10px; }
+.ob-res { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--paper3); font-size:12px; }
+.ob-res:last-child { border-bottom:none; }
+.ob-res-main { flex:1; min-width:0; line-height:1.45; }
+.ob-tag { display:inline-block; font-size:9px; font-weight:600; padding:1px 6px; border-radius:8px; background:var(--paper2); color:var(--ink-soft); margin-right:4px; }
+.ob-tag.pos { background:#fbeee0; color:#8a4a10; }
+.ob-tag.neg { background:rgba(74,144,64,0.12); color:var(--leaf-dark); }
+.ob-mini-btn { background:var(--paper2); border:2px solid var(--paper3); border-radius:7px; padding:3px 7px; font-family:'IBM Plex Sans', system-ui, sans-serif; font-size:10px; font-weight:600; color:var(--ink-mid); cursor:pointer; white-space:nowrap; }
+.ob-mini-btn:hover:not(:disabled) { border-color:var(--leaf-mid); color:var(--leaf-dark); }
+.ob-mini-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.ob-wide { width:100%; justify-content:center; }
+.ob-close-btn { border-color:#e0b0a0; color:var(--red-soft); }
+.ob-close-btn:hover { border-color:var(--red-soft); color:var(--red-soft); background:#fdf0ec; }
+/* explanations and chips */
+.ob-cand { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--paper3); }
+.ob-cand:last-child { border-bottom:none; }
+.ob-cand-main { flex:1; min-width:0; }
+.ob-cand-name { font-size:13px; font-weight:600; color:var(--ink); }
+.ob-cand-claim { font-size:11px; color:var(--ink-soft); line-height:1.4; margin:1px 0 4px; }
+.ob-chipbar { display:inline-flex; gap:2px; vertical-align:middle; min-height:12px; }
+.ob-chipbar i { width:7px; height:12px; border-radius:2px; background:var(--flower); display:inline-block; }
+.ob-chip-ctl { display:flex; align-items:center; gap:5px; font-weight:600; font-size:13px; color:var(--ink); }
+.ob-chip-ctl span { width:16px; text-align:center; }
+.ob-chip-btn { width:24px; height:24px; border-radius:7px; border:2px solid var(--paper3); background:var(--paper2); font-weight:600; font-size:14px; line-height:1; color:var(--ink-mid); cursor:pointer; font-family:'IBM Plex Sans', system-ui, sans-serif; }
+.ob-chip-btn:hover:not(:disabled) { border-color:var(--leaf-mid); color:var(--leaf-dark); }
+.ob-chip-btn:disabled { opacity:0.35; cursor:not-allowed; }
+.ob-chip-count { font-size:11px; font-weight:600; color:var(--ink-soft); margin-bottom:4px; }
+.ob-rep-line { display:flex; align-items:center; gap:10px; font-size:13px; padding:5px 0; border-bottom:1px solid var(--paper3); color:var(--ink-mid); }
+.ob-rep-line span:first-child { flex:1; }
+/* outcome */
+.ob-outcome { max-width:720px; }
+.ob-outcome .stat-grid { margin-bottom:14px; }
+.ob-outcome .reflect p + p { margin-top:9px; }
+.ob-table-note { font-size:11px; color:var(--ink-pale); margin:-8px 0 18px; text-align:left; }
+@media (max-width: 980px) {
+  .ob-layout { display:flex; flex-direction:column; align-items:stretch; gap:0; }
+  .ob-main, .ob-side { display:contents; }
+  .ob-status { order:1; } #ob-notif { order:2; } .ob-map-card { order:3; } .ob-controls { order:4; }
+  .ob-o-sel { order:5; } .ob-o-exp { order:6; } .ob-o-ev { order:7; } .ob-o-curve { order:8; } .ob-o-log { order:9; }
+}
+.reveal-table { width:100%; border-collapse:collapse; font-size:12px; margin:6px 0 16px; text-align:left; }
+.reveal-table th { background:var(--paper2); padding:6px 10px; text-align:left; font-size:10px; color:var(--ink-soft); border-bottom:2px solid var(--paper3); }
+.reveal-table td { padding:6px 10px; border-bottom:1px solid var(--paper3); color:var(--ink-mid); }
+.reveal-table tr.actual td { background:rgba(74,144,64,0.10); font-weight:600; color:var(--leaf-dark); }
+@media (max-width: 680px) { .game-layout { grid-template-columns:1fr; } }
+
+
+.sw { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:7px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <h1 onclick="App.goHome()">Theory Selection Suite</h1>
+    <span class="breadcrumb" id="hdr-breadcrumb" style="display:none"></span>
+    <span class="version">v4.1</span>
+    <span class="seed-tag" id="hdr-seed"></span>
+    <button type="button" class="settings-btn" onclick="App.openSettings()">Menu</button>
+  </div>
+
+  <!-- ════ LANDING ════ -->
+  <div class="screen active" id="screen-landing">
+    <div class="land-hero">
+      <h1 class="land-h1">Choosing between theories</h1>
+      <p class="land-sub">Three exercises in weighing rival explanations against evidence. In each one, the evidence is harder to get and harder to read than in the last.</p>
+    </div>
+    <div class="land-modules">
+      <div class="mod-card">
+        <div class="mod-art art-pattern"><div class="art-pattern-inner" id="land-creatures"></div></div>
+        <div class="mod-body">
+          
+          <div class="mod-title">Creatures</div>
+          <div class="mod-desc">Identify a hidden creature by asking about its features. Every candidate is in view and every answer is reliable, so the work is in choosing good questions.</div>
+          
+          <button type="button" class="mod-btn go" onclick="Creatures.goSetup()">Open Creatures</button>
+        </div>
+      </div>
+      <div class="mod-card">
+        <div class="mod-art art-garden"><div class="art-sun"></div><div class="art-plants" id="land-plants"></div></div>
+        <div class="mod-body">
+          
+          <div class="mod-title">Garden</div>
+          <div class="mod-desc">Find the growing conditions that produce the tallest plant before time runs out. Here you produce the evidence yourself by setting up comparisons.</div>
+          
+          <button type="button" class="mod-btn go" onclick="Garden.goSetup()">Open Garden</button>
+        </div>
+      </div>
+      <div class="mod-card">
+        <div class="mod-art art-outbreak"><div class="art-map" id="land-map"></div></div>
+                <div class="mod-body">
+          
+          <div class="mod-title">Outbreak</div>
+          <div class="mod-desc">Work out what is making a town ill when the obvious evidence fits several explanations, then report how confident you are in each one.</div>
+          
+          <button type="button" class="mod-btn go" onclick="Outbreak.goSetup()">Open Outbreak</button>
+        </div>
+      </div>
+    </div>
+    <div class="land-footer">Theory Selection Suite · v4.1</div>
+  </div>
+
+  <!-- ════ PATTERN FINDER: SETUP ════ -->
+  <div class="screen" id="screen-pf-setup">
+    <div class="setup-wrap fadein">
+      <div class="setup-title">Creatures</div>
+      <div class="setup-sub">One creature on the board has been picked at random. Ask about its features, rule out the creatures that don't match, and name it.</div>
+      <div class="premise">
+        <p>No two creatures share the same combination of features, and every answer you get is true, so each question rules creatures out for certain.</p>
+        <p>There's no limit on questions, but fewer is better. A good question rules out a lot of creatures however it's answered.</p>
+      </div>
+      <div class="card">
+        <div class="section-label">Difficulty</div>
+        <div class="diff-grid" id="pf-diff-grid">
+          <div class="diff-btn sel" data-diff="easy">
+            <div class="dn">Easy</div>
+            <div class="dd">12 creatures, 3 features<br>Ask for a feature's value<br>Gold: fewest possible</div>
+          </div>
+          <div class="diff-btn" data-diff="medium">
+            <div class="dn">Medium</div>
+            <div class="dd">20 creatures, 4 features<br>Yes/no questions<br>Gold: 5 questions or fewer</div>
+          </div>
+          <div class="diff-btn" data-diff="hard">
+            <div class="dn">Hard</div>
+            <div class="dd">24 creatures, 6 features<br>Yes/no questions<br>Gold: 5 questions or fewer</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label">Seed (optional)</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <input class="text-input" id="pf-seed-input" type="text" placeholder="leave blank for random">
+          <button type="button" class="btn" onclick="Creatures.randSeed()">Random</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-pale)">Students who enter the same seed get the same board.</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="button" class="btn" onclick="App.goHome()">← Back</button>
+        <button type="button" class="btn primary" onclick="Creatures.start()">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PATTERN FINDER: GAME ════ -->
+  <div class="screen" id="screen-pf-game">
+    <div class="pf-layout">
+      <div class="pf-main">
+
+        <div class="pf-status">
+          <div class="si">Questions asked: <strong id="pf-used">0</strong></div>
+          <div class="si">Remaining: <strong id="pf-remaining">—</strong> creatures</div>
+          <div id="pf-tier-badge" style="margin-left:auto"></div>
+        </div>
+
+        <div class="notif" id="pf-notif"></div>
+
+        <!-- Target silhouette + known properties -->
+        <div class="target-area">
+          <div class="target-silhouette" id="pf-sil-wrap"></div>
+          <div class="target-label">
+            <h3>The hidden creature</h3>
+            <p id="pf-target-desc">Ask questions to learn its features.</p>
+            <div class="target-knowns" id="pf-knowns"></div>
+          </div>
+        </div>
+
+        <div class="pf-board-card">
+          <div class="pf-board-label" id="pf-board-label">All creatures. Click any to inspect.</div>
+          <div class="pf-board" id="pf-board"></div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <div class="pf-sidebar">
+        <div class="pf-sidebar-card">
+          <div class="pf-sidebar-title">Ask a question</div>
+
+          <!-- Easy mode: direct property reveal -->
+          <div id="q-easy-panel" style="display:none">
+            <div class="q-easy-note">Ask about a feature and you'll be told its value.</div>
+            <div id="q-easy-props"></div>
+          </div>
+
+          <!-- Standard mode: two-step picker -->
+          <div id="q-standard-panel" style="display:none">
+            <!-- Step 1: choose property -->
+            <div class="q-step active" id="q-step1">
+              <div class="q-step-label">Choose a feature</div>
+              <div id="q-prop-list"></div>
+            </div>
+            <!-- Step 2: choose value -->
+            <div class="q-step" id="q-step2">
+              <div class="q-val-back" onclick="Creatures.backToProps()">← Back</div>
+              <div class="q-val-prop-header" id="q-val-header"></div>
+              <div class="q-vals" id="q-val-list"></div>
+            </div>
+          </div>
+
+          <!-- Guess area -->
+          <div class="q-guess-area">
+            <div class="q-guess-prompt" id="pf-guess-prompt">Click a creature on the board to guess.</div>
+            <span class="q-guess-link" id="pf-guess-link" onclick="Creatures.toggleGuess()">Make a guess</span>
+          </div>
+        </div>
+
+        <div class="pf-sidebar-card">
+          <div class="pf-sidebar-title">Questions asked</div>
+          <div id="pf-log" style="max-height:280px;overflow-y:auto">
+            <div style="font-size:11px;color:var(--ink-pale)">No questions asked yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PATTERN FINDER: SUCCESS ════ -->
+  <div class="screen" id="screen-pf-success">
+    <div class="outcome-wrap fadein">
+      <div class="outcome-title win">Correct</div>
+      <div class="outcome-sub" id="pf-win-sub"></div>
+      <div class="outcome-tier" id="pf-win-tier"></div>
+      <div style="margin:0 auto 20px;display:flex;justify-content:center" id="pf-win-creature"></div>
+      <div class="stat-grid" id="pf-win-stats"></div>
+      <div class="reflect" id="pf-win-reflect"></div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button type="button" class="btn" onclick="App.goHome()">Home</button>
+        <button type="button" class="btn primary" onclick="Creatures.goSetup()">New board</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ GARDEN: SETUP ════ -->
+  <div class="screen" id="screen-garden-setup">
+    <div class="setup-wrap fadein">
+      <div class="setup-title">Garden</div>
+      <div class="setup-sub">You control the conditions in every plot of a garden. Find the combination that grows the tallest plant, and grow one to the target height before the days run out.</div>
+      <div class="premise">
+        <p>Drag across plots to select them, set their conditions, then run a day and see what grows. A plant grows faster the taller it already is, so finding the best conditions early matters.</p>
+        <p>Some conditions have one clearly best setting and others barely matter. On Medium and Hard, some settings work better in combination. Hover over a plot to see its history.</p>
+      </div>
+      <div class="card">
+        <div class="section-label">Difficulty</div>
+        <div class="diff-grid" id="g-diff-grid">
+          <div class="diff-btn sel" data-diff="easy"><div class="dn">Easy</div><div class="dd">4×4 plots, 2 conditions<br>Target: height 30 in 6 days</div></div>
+          <div class="diff-btn" data-diff="medium"><div class="dn">Medium</div><div class="dd">8×8 plots, 3 conditions<br>Target: height 45 in 8 days</div></div>
+          <div class="diff-btn" data-diff="hard"><div class="dn">Hard</div><div class="dd">12×12 plots, 4 conditions<br>Target: height 60 in 10 days</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label">Seed (optional)</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <input class="text-input" id="g-seed-input" type="text" placeholder="leave blank for random">
+          <button type="button" class="btn" onclick="Garden.randSeed()">Random</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-pale)">Students who enter the same seed get the same garden.</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="button" class="btn" onclick="App.goHome()">← Back</button>
+        <button type="button" class="btn primary" onclick="Garden.start()">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ GARDEN: GAME ════ -->
+  <div class="screen" id="screen-garden-game">
+    <div class="game-layout">
+      <div class="game-main">
+        <div class="goal-bar" id="g-goal-bar">
+          <div class="goal-label" id="g-goal-label">Tallest plant: 0 of 30</div>
+          <div class="goal-track"><div class="goal-fill" id="g-goal-fill" style="width:0%"></div></div>
+          <div class="goal-days" id="g-goal-days">6 days remaining</div>
+        </div>
+        <div class="status-bar">
+          <div class="si">Day <strong id="g-day">1</strong></div>
+          <div class="si">Best height: <strong id="g-best">—</strong></div>
+          <div class="si" id="g-uninit-stat" style="margin-left:auto"></div>
+        </div>
+        <div class="notif" id="g-notif"></div>
+        <div class="garden-card">
+          <div class="garden-hint">Drag across plots to select them, set their conditions, then run a day.</div>
+          <div class="sky-strip"><div class="sky-sun"></div><div class="sky-cloud" style="left:8%;width:34px;height:11px;top:7px"></div><div class="sky-cloud" style="left:54%;width:26px;height:9px;top:9px"></div></div>
+          <div class="garden-wrap" id="g-wrap"><div id="g-sel-rect"></div><div class="garden-grid" id="g-grid"></div></div>
+        </div>
+        <div class="action-row">
+          <button type="button" class="btn primary" id="g-run-btn" onclick="Garden.runDay()" disabled>Run day</button>
+          <button type="button" class="btn" onclick="Garden.clearSel()">Clear selection</button>
+          <button type="button" class="btn" onclick="App.showModal('g-guide')">How to use</button>
+        </div>
+      </div>
+      <div class="game-sidebar">
+        <div class="sidebar-card"><div class="sidebar-title">Conditions</div><div id="g-param-legend"></div></div>
+        <div class="sidebar-card"><div class="sidebar-title">Log</div><div id="g-log" style="max-height:230px;overflow-y:auto"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ GARDEN: SUCCESS ════ -->
+  <div class="screen" id="screen-garden-success">
+    <div class="outcome-wrap fadein">
+      <div class="outcome-title win">Target reached</div>
+      <div class="outcome-sub" id="g-win-sub"></div>
+      <div class="stat-grid" id="g-win-stats"></div>
+      <div class="reflect" id="g-win-reflect"></div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button type="button" class="btn" onclick="App.goHome()">Home</button>
+        <button type="button" class="btn primary" onclick="Garden.goSetup()">New garden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ GARDEN: FAILURE ════ -->
+  <div class="screen" id="screen-garden-failure">
+    <div class="outcome-wrap fadein">
+      <div class="outcome-title fail">Target not reached</div>
+      <div class="outcome-sub" id="g-fail-sub"></div>
+      <div class="reflect" id="g-fail-reflect"></div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button type="button" class="btn" onclick="App.goHome()">Home</button>
+        <button type="button" class="btn primary" onclick="Garden.retry()">Try again</button>
+      </div>
+    </div>
+  </div>
+
+<!-- ════ OUTBREAK: SETUP ════ -->
+  <div class="screen" id="screen-ob-setup">
+    <div class="setup-wrap fadein">
+      <div class="setup-title">Outbreak</div>
+      <div class="setup-sub">People in a small town are falling ill. Several explanations are on the table, and the first evidence you see will fit more than one of them. Work out which is right, then report how confident you are.</div>
+      <div class="premise">
+        <p>Each day, new cases show up on the town map and in the case chart. Watching costs nothing. Everything else costs investigation hours, and you have a fixed number of them.</p>
+        <p>Visiting a household tells you which well and food shop it uses and who works at the Mill. On Medium and Hard, other illnesses are going around too, and a lab test tells you whether a resident has the outbreak illness.</p>
+        <p>You can also close a well, a shop, or the Mill. If you close the source, new cases stop once people who were already infected have fallen ill.</p>
+        <p>By the deadline, you report to the town council by spreading 10 chips across the explanations to show how confident you are in each. Chips on the right answer raise your score and chips anywhere else lower it, so it pays to report your honest confidence.</p>
+      </div>
+      <div class="card">
+        <div class="section-label">Difficulty</div>
+        <div class="diff-grid" id="ob-diff-grid">
+          <div class="diff-btn sel" data-diff="easy">
+            <div class="dn">Easy</div>
+            <div class="dd">4 explanations<br>22 households, 15 hours<br>One illness in town</div>
+          </div>
+          <div class="diff-btn" data-diff="medium">
+            <div class="dn">Medium</div>
+            <div class="dd">5 explanations<br>24 households, 15 hours<br>Other illnesses, lab tests</div>
+          </div>
+          <div class="diff-btn" data-diff="hard">
+            <div class="dn">Hard</div>
+            <div class="dd">7 explanations<br>26 households, 13 hours<br>Adds marsh air and contagion</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label">Seed (optional)</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <input class="text-input" id="ob-seed-input" type="text" placeholder="leave blank for random">
+          <button type="button" class="btn" onclick="Outbreak.randSeed()">Random</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-pale)">Students who enter the same seed get the same town, and their outbreaks match until someone closes a site.</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="button" class="btn" onclick="App.goHome()">← Back</button>
+        <button type="button" class="btn primary" onclick="Outbreak.start()">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ OUTBREAK: GAME ════ -->
+  <div class="screen" id="screen-ob-game">
+    <div class="ob-layout">
+      <div class="ob-main">
+        <div class="status-bar ob-status">
+          <div class="si">Day <strong id="ob-day">1</strong> <span id="ob-day-of"></span></div>
+          <div class="si">Ill now: <strong id="ob-ill">0</strong></div>
+          <div class="si">Ever ill: <strong id="ob-ever">0</strong></div>
+          <div class="si" style="margin-left:auto">Hours: <strong id="ob-hours">0</strong><span class="ob-hours" id="ob-hour-pips"></span></div>
+        </div>
+        <div class="notif" id="ob-notif"></div>
+        <div class="ob-map-card">
+          <canvas id="ob-map"></canvas>
+          <div class="ob-legend" id="ob-legend"></div>
+        </div>
+        <div class="ob-controls">
+          <button type="button" class="btn primary" id="ob-next-btn" onclick="Outbreak.nextDay()">Next day</button>
+          <button type="button" class="btn" onclick="App.showModal('ob-guide')">How to investigate</button>
+          <span class="ob-deadline" id="ob-deadline"></span>
+        </div>
+        <div class="ob-card ob-o-ev">
+          <div class="ob-card-title">Evidence</div>
+          <div class="ob-card-sub">Illness rates among residents whose exposure you know. Anyone who has had symptoms counts as ill unless a lab test says they have something else. Click a row to see it on the map.</div>
+          <table class="ob-ev-table">
+            <thead><tr><th>Exposure</th><th>Ill among exposed</th><th>Ill among not exposed</th></tr></thead>
+            <tbody id="ob-ev-body"></tbody>
+          </table>
+          <div class="ob-cmp">
+            <div class="ob-cmp-head">Compare
+              <select class="ob-select" id="ob-cmp-a" onchange="Outbreak.setCmp(0,this.value)"></select>
+              with
+              <select class="ob-select" id="ob-cmp-b" onchange="Outbreak.setCmp(1,this.value)"></select>
+            </div>
+            <div id="ob-cmp-out"></div>
+          </div>
+        </div>
+        <div class="ob-card ob-o-curve">
+          <div class="ob-card-title">New cases per day</div>
+          <div class="ob-card-sub">Counted by the day symptoms began. Red lines mark closures. Tan bars are illnesses a lab test showed were something else.</div>
+          <canvas id="ob-curve"></canvas>
+        </div>
+      </div>
+      <div class="ob-side">
+        <div class="ob-card ob-o-sel"><div id="ob-sel"></div></div>
+        <div class="ob-card ob-o-exp">
+          <div class="ob-card-title">Explanations</div>
+          <div class="ob-chip-count" id="ob-chip-count"></div>
+          <div class="ob-card-sub" style="margin-bottom:4px">Spread 10 chips to show how confident you are in each. You can move them at any time.</div>
+          <div id="ob-cands"></div>
+          <button type="button" class="btn primary ob-wide" id="ob-report-btn" style="margin-top:10px" onclick="Outbreak.openReport()" disabled>Report to the council</button>
+        </div>
+        <div class="ob-card ob-o-log">
+          <div class="ob-card-title">Notebook</div>
+          <div id="ob-log" style="max-height:260px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ OUTBREAK: RESULT ════ -->
+  <div class="screen" id="screen-ob-result">
+    <div class="outcome-wrap ob-outcome fadein">
+      <div class="outcome-title" id="ob-res-title"></div>
+      <div class="outcome-sub" id="ob-res-sub"></div>
+      <div class="outcome-tier" id="ob-res-tier"></div>
+      <div class="stat-grid" id="ob-res-stats"></div>
+      <div id="ob-res-tables"></div>
+      <div class="reflect" id="ob-res-reflect" style="text-align:left"></div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button type="button" class="btn" onclick="App.goHome()">Home</button>
+        <button type="button" class="btn" onclick="Outbreak.replay()">Replay this town</button>
+        <button type="button" class="btn primary" onclick="Outbreak.goSetup()">New outbreak</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- Settings panel -->
+<div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div class="settings-hdr"><h2>Settings</h2><button type="button" class="settings-x" onclick="App.closeSettings()">✕</button></div>
+  <div class="settings-body">
+    <div class="settings-group">
+      <div class="settings-group-lbl">Navigation</div>
+      <div class="settings-item"><span class="settings-item-lbl">Return to main menu</span><button type="button" class="btn" onclick="App.closeSettings();App.goHome()">← Home</button></div>
+    </div>
+    <div class="settings-group" id="settings-mode-section" style="display:none">
+      <div class="settings-group-lbl" id="settings-mode-lbl">Mode options</div>
+      <div id="settings-mode-items"></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-lbl">About</div>
+      <div class="settings-item"><span class="settings-item-lbl" style="color:var(--ink-pale);font-size:12px">Theory Selection Suite v4.1</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Creature inspect modal -->
+<div class="modal-bg" id="pf-inspect-modal" onclick="if(event.target===this)App.closeModal('pf-inspect-modal')">
+  <div class="modal">
+    <h2 id="pf-inspect-name">Creature</h2>
+    <div style="display:flex;justify-content:center;margin-bottom:14px" id="pf-inspect-svg"></div>
+    <div id="pf-inspect-props" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:13px;color:var(--ink-mid)"></div>
+    <div class="modal-btns"><button type="button" class="btn primary" onclick="App.closeModal('pf-inspect-modal')">Close</button></div>
+  </div>
+</div>
+
+
+
+<!-- Shared popup (garden assignment) -->
+<div class="popup-overlay" id="popup-overlay" onclick="App.closePopup()"></div>
+<div class="popup" id="popup">
+  <div class="popup-header"><h3 id="popup-title">Assign conditions</h3></div>
+  <div id="popup-params"></div>
+  <div class="popup-btns"><button type="button" class="btn primary" onclick="App.applyPopup()">Apply</button><button type="button" class="btn" onclick="App.closePopup()">Cancel</button></div>
+</div>
+<div class="htip" id="htip"></div>
+<div class="modal-bg" id="g-guide" onclick="if(event.target===this)App.closeModal('g-guide')"><div class="modal"><h2>How to use the garden</h2><p><strong>Select plots:</strong> Click and drag to select a region. Selected plots glow green.</p><p><strong>Assign conditions:</strong> A popup appears after you select. Set one or more conditions and leave others as "no change" to update only those variables.</p><p><strong>Run a day:</strong> Once every plot is set, click Run Day. Not every variable has the same shape: some have a sharp optimum, others are flatter, and some seeds include interactions.</p><p><strong>Hover any plot</strong> to see its day-by-day history.</p><div class="modal-btns"><button type="button" class="btn primary" onclick="App.closeModal('g-guide')">Close</button></div></div></div>
+
+<!-- Outbreak: report and guide -->
+<div class="modal-bg" id="ob-report-modal" onclick="if(event.target===this)App.closeModal('ob-report-modal')">
+  <div class="modal">
+    <h2>Report to the council</h2>
+    <div id="ob-report-summary"></div>
+    <div class="modal-btns">
+      <button type="button" class="btn primary" onclick="Outbreak.submitReport()">Submit report</button>
+      <button type="button" class="btn" onclick="App.closeModal('ob-report-modal')">Keep investigating</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="ob-guide" onclick="if(event.target===this)App.closeModal('ob-guide')">
+  <div class="modal">
+    <h2>How to investigate</h2>
+    <p><strong>Next day</strong> moves time forward. New illness shows up as red dots in the houses and as bars in the case chart.</p>
+    <p><strong>Click a house</strong> to see who lives there. Visiting it (1 hour) records which well and food shop the household uses and who works at the Mill.</p>
+    <p><strong>Lab tests</strong> (1 hour, Medium and Hard) show whether a resident has or had the outbreak illness, even before symptoms. Some residents are ill with something else, and a test is the only way to tell.</p>
+    <p><strong>Click a site</strong> to close it (3 hours). Exposure there stops at once, but anyone already infected will still fall ill over the next few days.</p>
+    <p><strong>The evidence table</strong> compares illness among exposed and unexposed residents. <strong>Compare</strong> shows the residents exposed to one explanation's site and not the other's, which is where two explanations make different predictions.</p>
+    <p><strong>Chips</strong> show your confidence in each explanation. Place all 10 before you report.</p>
+    <div class="modal-btns"><button type="button" class="btn primary" onclick="App.closeModal('ob-guide')">Close</button></div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+
+
+const App = (() => {
+  function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-'+id).classList.add('active'); }
+  function goHome() { if (typeof Outbreak!=='undefined'&&Outbreak.stop) Outbreak.stop(); document.getElementById('hdr-breadcrumb').style.display='none'; document.getElementById('hdr-seed').style.display='none'; clearModeSettings(); closePopup(); hideTooltip(); showScreen('landing'); }
+  function setBreadcrumb(l) { const e=document.getElementById('hdr-breadcrumb'); e.textContent=l; e.style.display=''; }
+  function setSeed(s) { const e=document.getElementById('hdr-seed'); e.textContent='Seed: '+s; e.style.display=''; }
+  function openSettings()  { document.getElementById('settings-panel').classList.add('open'); document.getElementById('settings-overlay').classList.add('open'); }
+  function closeSettings() { document.getElementById('settings-panel').classList.remove('open'); document.getElementById('settings-overlay').classList.remove('open'); }
+  function registerModeSettings(l,h) { document.getElementById('settings-mode-lbl').textContent=l; document.getElementById('settings-mode-items').innerHTML=h; document.getElementById('settings-mode-section').style.display=''; }
+  function clearModeSettings() { document.getElementById('settings-mode-section').style.display='none'; document.getElementById('settings-mode-items').innerHTML=''; }
+  function showModal(id)  { document.getElementById(id).classList.add('vis'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('vis'); }
+  function mulberry32(seed) { return ()=>{ seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296; }; }
+  function seedFromStr(s) { let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return h>>>0; }
+  function randSeedStr()  { return Math.random().toString(36).slice(2,8).toUpperCase(); }
+  function drawPlantSVG(airDiv,height,score,cellW,airH) {
+    const wrap=document.createElement('div'); wrap.style.cssText=`display:flex;align-items:flex-end;width:${cellW}px;height:${airH}px`;
+    const W=cellW-4,H=airH,sH=Math.max(4,Math.round(height*(H-4)/100)),cx=W/2;
+    const sC=score>=70?'#3d8030':score>=40?'#6a7828':'#7a5820',lC=score>=70?'#5db050':score>=40?'#8aaa40':'#8a7830';
+    let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+    s+=`<line x1="${cx}" y1="${H}" x2="${cx}" y2="${H-sH}" stroke="${sC}" stroke-width="${Math.max(2,Math.round(sH/18)+2)}" stroke-linecap="round"/>`;
+    if(height>8){const lc=height>65?3:height>32?2:1;for(let i=0;i<lc;i++){const ay=H-sH*(0.28+i*0.24),sd=i%2===0?1:-1,lw=Math.max(6,5+Math.round(height/14));s+=`<path d="M${cx},${ay} Q${cx+sd*lw*0.6},${ay-lw*0.5} ${cx+sd*(lw+2)},${ay} Q${cx+sd*lw*0.6},${ay+lw*0.28} ${cx},${ay}Z" fill="${lC}" opacity="0.88"/>`;}}
+    if(score>=80&&height>50){const fr=Math.min(7,4+Math.round(height/20));for(let a=0;a<5;a++){const ang=(a/5)*Math.PI*2;s+=`<circle cx="${cx+Math.cos(ang)*(fr+1)}" cy="${H-sH+Math.sin(ang)*(fr+1)}" r="${fr*0.68}" fill="#e8a030" opacity="0.85"/>`;}s+=`<circle cx="${cx}" cy="${H-sH}" r="${fr*0.52}" fill="#fff5d0" opacity="0.95"/>`;}
+    s+='</svg>'; wrap.innerHTML=s; airDiv.appendChild(wrap);
+  }
+  let _popupState={}, _popupOnApply=null;
+  function openPopup(items,title,onApply,anchorEvent){ _popupState={}; _popupOnApply=onApply; document.getElementById('popup-title').textContent=title; const container=document.getElementById('popup-params'); container.innerHTML=''; for(const item of items){ _popupState[item.key]='__nc__'; const block=document.createElement('div'); block.className='popup-param'; const lbl=document.createElement('label'); lbl.textContent=item.label; block.appendChild(lbl); const pills=document.createElement('div'); pills.className='popup-pills'; pills.appendChild(_makePill('no change','__nc__',item.key,true)); for(const v of item.values) pills.appendChild(_makePill(v,v,item.key,false)); block.appendChild(pills); container.appendChild(block);} const popup=document.getElementById('popup'); popup.style.display='block'; popup.style.transform=''; if(anchorEvent){ let x=anchorEvent.clientX+14, y=anchorEvent.clientY-10; if(x+270>window.innerWidth) x=anchorEvent.clientX-284; if(y+340>window.innerHeight) y=window.innerHeight-350; popup.style.left=x+'px'; popup.style.top=y+'px'; } else { popup.style.left='50%'; popup.style.top='38%'; popup.style.transform='translate(-50%,-50%)'; } document.getElementById('popup-overlay').classList.add('vis'); }
+  function _makePill(label,value,key,startSel){ const pill=document.createElement('div'); pill.className='ppill'+(startSel?' sel':'')+(value==='__nc__'?' nochange':''); pill.textContent=label; pill.onclick=()=>{ _popupState[key]=value; pill.closest('.popup-pills').querySelectorAll('.ppill').forEach(p=>p.classList.remove('sel')); pill.classList.add('sel'); }; return pill; }
+  function applyPopup(){ if(_popupOnApply) _popupOnApply(_popupState); closePopup(); }
+  function closePopup(){ const o=document.getElementById('popup-overlay'), p=document.getElementById('popup'); if(o) o.classList.remove('vis'); if(p){ p.style.display='none'; p.style.transform=''; } }
+  function showTooltip(html,e){ const tip=document.getElementById('htip'); if(!tip) return; tip.innerHTML=html; tip.classList.add('vis'); _placeTip(tip,e); }
+  function hideTooltip(){ const t=document.getElementById('htip'); if(t) t.classList.remove('vis'); }
+  function _placeTip(tip,e){ let x=e.clientX+16,y=e.clientY-10; tip.style.left=x+'px'; tip.style.top=y+'px'; requestAnimationFrame(()=>{ const r=tip.getBoundingClientRect(); if(r.right>window.innerWidth-8) tip.style.left=(e.clientX-r.width-14)+'px'; if(r.bottom>window.innerHeight-8) tip.style.top=(e.clientY-r.height-10)+'px'; }); }
+  document.addEventListener('mousemove',e=>{ const tip=document.getElementById('htip'); if(tip&&tip.classList.contains('vis')) _placeTip(tip,e); });
+  return { showScreen, goHome, setBreadcrumb, setSeed, openSettings, closeSettings, registerModeSettings, clearModeSettings, showModal, closeModal, mulberry32, seedFromStr, randSeedStr, drawPlantSVG, openPopup, applyPopup, closePopup, showTooltip, hideTooltip };
 })();
 
-const Outbreak = (() => {
-
-  /* ── Disease definitions ─────────────────────────────────
-     Parameters:
-       radius:      transmission proximity threshold (px)
-       rate:        probability of transmission per tick when in range
-       incubation:  days before symptomatic
-       immunity:    whether recovery grants immunity
-  */
-  const DISEASES = [
-    { id:'blotch',   name:'Blotch Fever',   color:'#e05050', radius:55, rate:0.018, incubation:2, immunity:false, desc:'Wide radius · high rate · short incubation · no immunity' },
-    { id:'greymist', name:'Greymist',        color:'#9090b8', radius:20, rate:0.005, incubation:7, immunity:true,  desc:'Tight radius · low rate · long incubation · immunity' },
-    { id:'crumble',  name:'Crumble',         color:'#e0a040', radius:40, rate:0.020, incubation:4, immunity:true,  desc:'Medium radius · high rate · medium incubation · immunity' },
-    { id:'driftlung',name:'Driftlung',       color:'#60a8c0', radius:55, rate:0.004, incubation:7, immunity:false, desc:'Wide radius · low rate · long incubation · no immunity' },
-    { id:'spindle',  name:'Spindlefever',    color:'#c060a0', radius:18, rate:0.025, incubation:2, immunity:true,  desc:'Tight radius · high rate · short incubation · immunity' },
-    { id:'hollow',   name:'Hollow Rot',      color:'#80b060', radius:38, rate:0.010, incubation:4, immunity:false, desc:'Medium radius · medium rate · medium incubation · no immunity' },
-  ];
-
-  const CONFIGS = {
-    easy:   { agentCount:40, diseases:['blotch','greymist','crumble','spindle'],              actions:12 },
-    medium: { agentCount:60, diseases:['blotch','greymist','crumble','driftlung','spindle','hollow'], actions:10 },
-    hard:   { agentCount:80, diseases:['blotch','greymist','crumble','driftlung','spindle','hollow'], actions:8  },
+const CreatureRenderer = (() => {
+  const COLORS = {
+    blue:   {fill:'#5b9fd4',stroke:'#3a7ab0',shadow:'#2a5a90',dark:'#1a3a60'},
+    green:  {fill:'#6ab85c',stroke:'#4a9040',shadow:'#2d6a2d',dark:'#1a4a1a'},
+    orange: {fill:'#e8903a',stroke:'#c06828',shadow:'#904818',dark:'#603010'},
+    purple: {fill:'#9b72c8',stroke:'#7050a0',shadow:'#503878',dark:'#302050'},
+    red:    {fill:'#d86050',stroke:'#b04030',shadow:'#802820',dark:'#501810'},
+    teal:   {fill:'#4ab8b0',stroke:'#2a9088',shadow:'#186860',dark:'#0a3830'},
   };
 
-  // Tiers: gold ≤ 4 actions, silver ≤ 7, bronze > 7
-  function _tier(actionsUsed) { return actionsUsed<=4?'gold':actionsUsed<=7?'silver':'bronze'; }
-  function _tierLabel(t)       { return t==='gold'?'🥇 Sharp':t==='silver'?'🥈 Good':'🥉 Diagnosed'; }
+  function render(creature, w, h) {
+    const col = COLORS[creature.color] || COLORS.blue;
+    let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+    s += `<ellipse cx="${w/2}" cy="${h-5}" rx="${w*0.35}" ry="5" fill="rgba(44,32,21,0.12)"/>`;
+    const cx=w/2, bodyTop=h*0.28, bodyH=h*0.52, bCx=cx, bCy=bodyTop+bodyH*0.5;
 
-  // Canvas dimensions
-  const CW = 680, CH = 420;
-  const TICK_MS = 40; // ms per simulation tick
-  const TICKS_PER_DAY = 25; // simulation ticks per game day
-  const AGENT_R = 5;    // agent radius px
-  const AGENT_SPEED = 1.2;
+    // Body
+    if (creature.body==='round') {
+      const rx=w*0.36,ry=bodyH*0.52;
+      s+=`<ellipse cx="${bCx}" cy="${bCy}" rx="${rx}" ry="${ry}" fill="${col.fill}"/>`;
+      s+=`<ellipse cx="${bCx}" cy="${bCy}" rx="${rx}" ry="${ry}" fill="none" stroke="${col.stroke}" stroke-width="1.5" opacity="0.4"/>`;
+      s+=`<ellipse cx="${bCx-rx*0.2}" cy="${bCy-ry*0.25}" rx="${rx*0.28}" ry="${ry*0.2}" fill="white" opacity="0.2"/>`;
+    } else if (creature.body==='boxy') {
+      const bx=cx-w*0.34,bw=w*0.68,br=bw*0.2;
+      s+=`<rect x="${bx}" y="${bodyTop}" width="${bw}" height="${bodyH}" rx="${br}" fill="${col.fill}"/>`;
+      s+=`<rect x="${bx}" y="${bodyTop}" width="${bw}" height="${bodyH}" rx="${br}" fill="none" stroke="${col.stroke}" stroke-width="1.5" opacity="0.4"/>`;
+      s+=`<ellipse cx="${bx+bw*0.28}" cy="${bodyTop+bodyH*0.25}" rx="${bw*0.12}" ry="${bodyH*0.1}" fill="white" opacity="0.2"/>`;
+    } else {
+      const bx=cx-w*0.27,bw=w*0.54,br=bw*0.28,bt=bodyTop-h*0.06,bh=bodyH+h*0.1;
+      s+=`<rect x="${bx}" y="${bt}" width="${bw}" height="${bh}" rx="${br}" fill="${col.fill}"/>`;
+      s+=`<rect x="${bx}" y="${bt}" width="${bw}" height="${bh}" rx="${br}" fill="none" stroke="${col.stroke}" stroke-width="1.5" opacity="0.4"/>`;
+      s+=`<ellipse cx="${cx-bw*0.15}" cy="${bt+bh*0.18}" rx="${bw*0.12}" ry="${bh*0.08}" fill="white" opacity="0.2"/>`;
+    }
 
-  // Colours for rendering
-  const C_HEALTHY   = '#6aaa5a';
-  const C_INCUBATE  = '#e8c84a'; // shown only on reveal/test
-  const C_SYMPTOM   = '#e06040';
-  const C_RECOVERED = '#7080b0';
-  const C_FOLLOW_RING = 'rgba(255,255,255,0.9)';
-  const C_QZONE = 'rgba(200,80,40,0.18)';
-  const C_QZONE_BORDER = 'rgba(200,80,40,0.7)';
+    // Pattern
+    if (creature.pattern==='spots') {
+      [[cx-w*0.12,bCy-bodyH*0.1,w*0.07],[cx+w*0.14,bCy+bodyH*0.08,w*0.055],[cx-w*0.05,bCy+bodyH*0.22,w*0.06]]
+        .forEach(([px,py,pr])=>s+=`<circle cx="${px}" cy="${py}" r="${pr}" fill="${col.shadow}" opacity="0.32"/>`);
+    } else if (creature.pattern==='stripes') {
+      [bCy-bodyH*0.15,bCy+bodyH*0.12].forEach(sy=>s+=`<rect x="${cx-w*0.3}" y="${sy}" width="${w*0.6}" height="${bodyH*0.1}" fill="${col.shadow}" opacity="0.25" rx="4"/>`);
+    }
 
-  let S = {};       // game state
-  let _raf = null;  // requestAnimationFrame handle
-  let _lastTick = 0;
-  let _playing = false;
-  let _speed = 1;
-  let _tool = 'observe';
-  let _dragStart = null; // for quarantine drag
-  let _dragCur   = null;
-  let _selectedDisease = null;
+    // Head accessory
+    const hTopY=(creature.body==='tall')?bodyTop-h*0.06:bodyTop;
+    if (creature.headAcc==='antenna') {
+      const ax=cx+w*0.08,ay=hTopY-h*0.18;
+      s+=`<path d="M${cx},${hTopY+h*0.02} Q${cx+w*0.06},${hTopY-h*0.08} ${ax},${ay}" stroke="${col.stroke}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      s+=`<circle cx="${ax}" cy="${ay}" r="${w*0.065}" fill="${col.shadow}"/>`;
+      s+=`<circle cx="${ax-w*0.02}" cy="${ay-h*0.022}" r="${w*0.03}" fill="white" opacity="0.5"/>`;
+    } else if (creature.headAcc==='horn') {
+      s+=`<path d="M${cx-w*0.07},${hTopY+h*0.01} Q${cx},${hTopY-h*0.1} ${cx+w*0.06},${hTopY-h*0.22} Q${cx+w*0.04},${hTopY-h*0.08} ${cx+w*0.09},${hTopY+h*0.01}Z" fill="${col.shadow}" opacity="0.9"/>`;
+    } else if (creature.headAcc==='hat') {
+      const hw=w*0.52;
+      s+=`<ellipse cx="${cx}" cy="${hTopY+h*0.01}" rx="${hw*0.52}" ry="${h*0.045}" fill="#2a1a0a"/>`;
+      s+=`<rect x="${cx-hw*0.32}" y="${hTopY-h*0.22}" width="${hw*0.64}" height="${h*0.23}" rx="${hw*0.14}" fill="#2a1a0a"/>`;
+      s+=`<rect x="${cx-hw*0.2}" y="${hTopY-h*0.18}" width="${hw*0.2}" height="${h*0.06}" rx="${hw*0.06}" fill="${col.fill}" opacity="0.45"/>`;
+    } else if (creature.headAcc==='crown') {
+      const cw=w*0.48,cbx=cx-cw/2,cby=hTopY-h*0.18;
+      s+=`<path d="M${cbx},${hTopY+h*0.01} L${cbx},${cby+h*0.06} L${cx-cw*0.2},${cby+h*0.14} L${cx},${cby} L${cx+cw*0.2},${cby+h*0.14} L${cbx+cw},${cby+h*0.06} L${cbx+cw},${hTopY+h*0.01}Z" fill="${col.shadow}"/>`;
+      s+=`<circle cx="${cx}" cy="${cby+h*0.01}" r="${w*0.035}" fill="${col.fill}" opacity="0.8"/>`;
+    }
 
-  /* ── State init ────────────────────────────────────────── */
-  function _freshState(diff, seedStr) {
-    const cfg = CONFIGS[diff];
-    const rng  = App.mulberry32(App.seedFromStr(seedStr));
-
-    // Pick which disease is actually spreading
-    const diseasePool = cfg.diseases.map(id=>DISEASES.find(d=>d.id===id));
-    const actual = diseasePool[Math.floor(rng() * diseasePool.length)];
-
-    // Generate agents
-    const agents = [];
-    for (let i=0;i<cfg.agentCount;i++) {
-      const x = AGENT_R*2 + rng()*(CW-AGENT_R*4);
-      const y = AGENT_R*2 + rng()*(CH-AGENT_R*4);
-      const angle = rng()*Math.PI*2;
-      agents.push({
-        id: i,
-        x, y,
-        vx: Math.cos(angle)*AGENT_SPEED,
-        vy: Math.sin(angle)*AGENT_SPEED,
-        // Disease state
-        state: 'healthy',   // healthy | incubating | symptomatic | recovered
-        daysInState: 0,
-        ticksInState: 0,
-        // Logging
-        stateLog: [],        // [{day, state}]
-        testLog: [],         // [{day, result}] result = 'healthy'|'incubating'|'symptomatic'|'recovered'
-        contactLog: [],      // logged only if followed
-        // UI
-        followed: false,
-        name: _agentName(i),
+    // Eyes
+    const eyeY=bodyTop+bodyH*0.3, eS=w*0.19, eL=cx-eS, eR=cx+eS, eRsz=w*0.1;
+    if (creature.eyes==='normal') {
+      [eL,eR].forEach(ex=>{
+        s+=`<circle cx="${ex}" cy="${eyeY}" r="${eRsz}" fill="white"/>`;
+        s+=`<circle cx="${ex+w*0.01}" cy="${eyeY+h*0.008}" r="${eRsz*0.55}" fill="${col.dark}"/>`;
+        s+=`<circle cx="${ex-w*0.03}" cy="${eyeY-h*0.025}" r="${eRsz*0.22}" fill="white"/>`;
+      });
+    } else if (creature.eyes==='wide') {
+      [eL,eR].forEach(ex=>{
+        s+=`<circle cx="${ex}" cy="${eyeY}" r="${eRsz*1.22}" fill="white"/>`;
+        s+=`<circle cx="${ex+w*0.01}" cy="${eyeY+h*0.008}" r="${eRsz*0.72}" fill="${col.dark}"/>`;
+        s+=`<circle cx="${ex-w*0.035}" cy="${eyeY-h*0.03}" r="${eRsz*0.28}" fill="white"/>`;
+        s+=`<path d="M${ex-eRsz*1.1},${eyeY-eRsz*1.6} Q${ex},${eyeY-eRsz*2.1} ${ex+eRsz*1.1},${eyeY-eRsz*1.6}" stroke="${col.shadow}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>`;
+      });
+    } else if (creature.eyes==='sleepy') {
+      [eL,eR].forEach(ex=>{
+        s+=`<circle cx="${ex}" cy="${eyeY}" r="${eRsz}" fill="white"/>`;
+        s+=`<path d="M${ex-eRsz},${eyeY} A${eRsz},${eRsz} 0 0,1 ${ex+eRsz},${eyeY}Z" fill="${col.fill}"/>`;
+        s+=`<circle cx="${ex+w*0.01}" cy="${eyeY+h*0.015}" r="${eRsz*0.5}" fill="${col.dark}"/>`;
+        s+=`<path d="M${ex-eRsz*1.1},${eyeY-h*0.005} Q${ex},${eyeY-eRsz*1.0} ${ex+eRsz*1.1},${eyeY-h*0.005}" stroke="${col.shadow}" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>`;
+      });
+    } else {
+      [eL,eR].forEach(ex=>{
+        s+=`<circle cx="${ex}" cy="${eyeY}" r="${eRsz*0.6}" fill="${col.dark}"/>`;
+        s+=`<circle cx="${ex-w*0.02}" cy="${eyeY-h*0.015}" r="${eRsz*0.2}" fill="white"/>`;
       });
     }
 
-    // Seed initial infections (3–5 agents)
-    const seedCount = 3 + Math.floor(rng()*3);
-    const shuffled = [...agents].sort(()=>rng()-0.5).slice(0,seedCount);
-    for (const a of shuffled) {
-      a.state = 'incubating';
-      a.ticksInState = 0;
+    // Mouth
+    const mY=bodyTop+bodyH*0.56, mW=w*0.22;
+    if (creature.mouth==='smile') {
+      s+=`<path d="M${cx-mW},${mY} Q${cx},${mY+h*0.09} ${cx+mW},${mY}" stroke="${col.shadow}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+      [[cx-w*0.3,cx+w*0.3]].flat().forEach(bx=>s+=`<ellipse cx="${bx}" cy="${mY-h*0.02}" rx="${w*0.08}" ry="${h*0.04}" fill="${col.shadow}" opacity="0.18"/>`);
+    } else if (creature.mouth==='frown') {
+      s+=`<path d="M${cx-mW},${mY+h*0.07} Q${cx},${mY-h*0.02} ${cx+mW},${mY+h*0.07}" stroke="${col.shadow}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+    } else if (creature.mouth==='open') {
+      s+=`<path d="M${cx-mW},${mY} Q${cx},${mY+h*0.1} ${cx+mW},${mY}Z" fill="${col.shadow}"/>`;
+      s+=`<line x1="${cx-mW*0.5}" y1="${mY+h*0.015}" x2="${cx+mW*0.5}" y2="${mY+h*0.015}" stroke="white" stroke-width="1.5" opacity="0.5"/>`;
+    } else {
+      s+=`<path d="M${cx-mW},${mY+h*0.03} Q${cx-mW*0.4},${mY-h*0.02} ${cx},${mY+h*0.03} Q${cx+mW*0.4},${mY+h*0.08} ${cx+mW},${mY+h*0.03}" stroke="${col.shadow}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
     }
 
+    // Limbs
+    const armY=bodyTop+bodyH*0.38;
+    const legBase=(creature.body==='tall')?bodyTop+bodyH*0.95:bodyTop+bodyH*0.9;
+    const edgeL=cx-w*(creature.body==='tall'?0.27:creature.body==='boxy'?0.34:0.32);
+    const edgeR=cx+w*(creature.body==='tall'?0.27:creature.body==='boxy'?0.34:0.32);
+    if (creature.limbs==='arms'||creature.limbs==='both') {
+      s+=`<path d="M${edgeL+w*0.02},${armY} Q${edgeL-w*0.1},${armY+h*0.07} ${edgeL-w*0.16},${armY+h*0.18}" stroke="${col.stroke}" stroke-width="${w*0.06}" fill="none" stroke-linecap="round" opacity="0.85"/>`;
+      s+=`<path d="M${edgeR-w*0.02},${armY} Q${edgeR+w*0.1},${armY+h*0.07} ${edgeR+w*0.16},${armY+h*0.18}" stroke="${col.stroke}" stroke-width="${w*0.06}" fill="none" stroke-linecap="round" opacity="0.85"/>`;
+      s+=`<circle cx="${edgeL-w*0.17}" cy="${armY+h*0.2}" r="${w*0.065}" fill="${col.fill}" stroke="${col.stroke}" stroke-width="1.2"/>`;
+      s+=`<circle cx="${edgeR+w*0.17}" cy="${armY+h*0.2}" r="${w*0.065}" fill="${col.fill}" stroke="${col.stroke}" stroke-width="1.2"/>`;
+    }
+    if (creature.limbs==='legs'||creature.limbs==='both') {
+      s+=`<path d="M${cx-w*0.13},${legBase} Q${cx-w*0.16},${legBase+h*0.07} ${cx-w*0.18},${legBase+h*0.16}" stroke="${col.stroke}" stroke-width="${w*0.06}" fill="none" stroke-linecap="round" opacity="0.85"/>`;
+      s+=`<path d="M${cx+w*0.13},${legBase} Q${cx+w*0.16},${legBase+h*0.07} ${cx+w*0.18},${legBase+h*0.16}" stroke="${col.stroke}" stroke-width="${w*0.06}" fill="none" stroke-linecap="round" opacity="0.85"/>`;
+      s+=`<ellipse cx="${cx-w*0.19}" cy="${legBase+h*0.18}" rx="${w*0.09}" ry="${h*0.04}" fill="${col.fill}" stroke="${col.stroke}" stroke-width="1.2"/>`;
+      s+=`<ellipse cx="${cx+w*0.19}" cy="${legBase+h*0.18}" rx="${w*0.09}" ry="${h*0.04}" fill="${col.fill}" stroke="${col.stroke}" stroke-width="1.2"/>`;
+    }
+
+    s+='</svg>';
+    return s;
+  }
+
+  // Neutral silhouette — same friendly blob shape regardless of target
+  function renderSilhouette(w, h) {
+    const cx=w/2, c=`rgba(30,42,66,`;
+    let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" class="sil-svg">`;
+    // drop shadow
+    s+=`<ellipse cx="${cx}" cy="${h-5}" rx="${w*0.32}" ry="5" fill="${c}0.18)"/>`;
+    // body blob
+    s+=`<ellipse cx="${cx}" cy="${h*0.55}" rx="${w*0.34}" ry="${h*0.38}" fill="${c}0.9)"/>`;
+    // head bump
+    s+=`<ellipse cx="${cx}" cy="${h*0.22}" rx="${w*0.28}" ry="${h*0.2}" fill="${c}0.9)"/>`;
+    // mysterious eyes — just two faint white dots
+    s+=`<circle cx="${cx-w*0.1}" cy="${h*0.2}" r="${w*0.05}" fill="white" opacity="0.18"/>`;
+    s+=`<circle cx="${cx+w*0.1}" cy="${h*0.2}" r="${w*0.05}" fill="white" opacity="0.18"/>`;
+    // stubby arms
+    s+=`<ellipse cx="${cx-w*0.38}" cy="${h*0.5}" rx="${w*0.1}" ry="${h*0.13}" fill="${c}0.85)" transform="rotate(-15 ${cx-w*0.38} ${h*0.5})"/>`;
+    s+=`<ellipse cx="${cx+w*0.38}" cy="${h*0.5}" rx="${w*0.1}" ry="${h*0.13}" fill="${c}0.85)" transform="rotate(15 ${cx+w*0.38} ${h*0.5})"/>`;
+    // question mark
+    s+=`<text x="${cx}" y="${h*0.6}" text-anchor="middle" font-size="${w*0.28}" font-family="IBM Plex Sans,sans-serif" font-weight="800" fill="white" opacity="0.55">?</text>`;
+    s+='</svg>';
+    return s;
+  }
+
+  return { render, renderSilhouette };
+})();
+
+
+const Creatures = (() => {
+
+  const PROPS = {
+    body:    {label:'Body',    icon:'🫧', values:['round','boxy','tall']},
+    color:   {label:'Color',   icon:'🎨', values:['blue','green','orange','purple','red','teal']},
+    eyes:    {label:'Eyes',    icon:'👀', values:['normal','wide','sleepy','dot']},
+    headAcc: {label:'Head',    icon:'🎩', values:['none','antenna','horn','hat','crown']},
+    mouth:   {label:'Mouth',   icon:'😶', values:['smile','frown','open','squiggle']},
+    pattern: {label:'Pattern', icon:'🔵', values:['none','spots','stripes']},
+    limbs:   {label:'Limbs',   icon:'🦾', values:['none','arms','legs','both']},
+  };
+
+  const CONFIGS = {
+    easy:   {count:12, props:['body','color','eyes'],                             mode:'easy'},
+    medium: {count:20, props:['body','color','eyes','headAcc'],                   mode:'value'},
+    hard:   {count:24, props:['body','color','eyes','headAcc','mouth','pattern'], mode:'value'},
+  };
+
+  // Tier thresholds: gold ≤ the board's optimum, silver ≤ optimum+2, bronze above that.
+  function _tiers() { return { gold: S.opt, silver: S.opt + 2 }; }
+
+  // Fewest questions that guarantee narrowing the board to one creature
+  // (minimax over the question types allowed in this mode).
+  function _optimal(creatures, props, mode) {
+    const n = creatures.length, qs = [];
+    if (mode==='easy') for (const p of props) qs.push({ parts: Object.values(creatures.reduce((m,c,i)=>{ m[c[p]]=(m[c[p]]||0)|(1<<i); return m; },{})) });
+    else for (const p of props) for (const v of PROPS[p].values) { let m=0; creatures.forEach((c,i)=>{ if(c[p]===v) m|=1<<i; }); qs.push({ yes:m }); }
+    const pop = m => { let c=0; while(m){ m&=m-1; c++; } return c; };
+    const memo = new Map();
+    function solve(mask, budget) {
+      const k = pop(mask); if (k<=1) return 0;
+      const hit = memo.get(mask);
+      if (hit && (hit.exact || hit.lb > budget)) return hit.exact ? hit.val : budget+1;
+      const lb = mode==='easy' ? 1 : Math.ceil(Math.log2(k));
+      if (lb > budget) return budget+1;
+      let best = budget+1;
+      for (const q of qs) {
+        const parts = (q.parts ? q.parts.map(m=>m&mask) : [q.yes&mask, mask&~q.yes]).filter(m=>m);
+        if (parts.length < 2) continue;
+        let worst = 0;
+        for (const pm of parts) { worst = Math.max(worst, solve(pm, best-2)); if (worst >= best-1) break; }
+        if (1+worst < best) best = 1+worst;
+        if (best === lb) break;
+      }
+      memo.set(mask, best<=budget ? { exact:true, val:best } : { exact:false, lb:budget+1 });
+      return best;
+    }
+    for (let b=1; b<20; b++) { memo.clear(); const r = solve((1<<n)-1, b); if (r<=b) return r; }
+    return Math.ceil(Math.log2(n));
+  }
+
+  function _tierFor(qUsed) {
+    const t = _tiers();
+    if (qUsed <= t.gold)   return 'gold';
+    if (qUsed <= t.silver) return 'silver';
+    return 'bronze';
+  }
+
+  function _tierLabel(tier) {
+    return tier === 'gold' ? 'Gold' : tier === 'silver' ? 'Silver' : 'Bronze';
+  }
+
+  const CELL_SIZES = {easy:78, medium:66, hard:56};
+
+  let S = {};
+
+  function _generateCreatures(props, count, rng) {
+    const all=[];
+    function go(i,p){if(i===props.length){all.push({...p});return;}for(const v of PROPS[props[i]].values){p[props[i]]=v;go(i+1,p);}}
+    go(0,{});
+    for(let i=all.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[all[i],all[j]]=[all[j],all[i]];}
+    const names=['Blorp','Grumf','Zeel','Pudwick','Frix','Snorble','Wumbus','Kreet','Dizbit','Flonk','Vroop','Stelg','Quonk','Brimf','Tazzle','Hooble','Moxif','Dreep','Clunf','Yoble','Snibble','Wafft','Prool','Glonk'];
+    return all.slice(0,count).map((c,i)=>({id:i,name:names[i]||`C${i+1}`,...c}));
+  }
+
+  function _freshState(diff, seedStr) {
+    const cfg=CONFIGS[diff];
+    const rng=App.mulberry32(App.seedFromStr(seedStr));
+    const creatures=_generateCreatures(cfg.props,cfg.count,rng);
+    const target=creatures[Math.floor(rng()*creatures.length)];
     return {
-      diff, seedStr, cfg, actual,
-      diseasePool, agents,
-      day: 1, tick: 0,
-      actionsUsed: 0,
-      actionsTotal: cfg.actions,
-      quarantines: [],  // [{x,y,w,h}]
-      dayHistory: [],   // [{day, symptomatic, recovered}]
-      followed: [],     // agent ids being followed
-      selectedDiseaseId: null,
+      diff, seedStr, cfg, creatures, target, opt:_optimal(creatures,cfg.props,cfg.mode),
+      askedValues:{},   // 'prop:value' → true/false (both modes)
+      askedEasyProps: new Set(), // easy mode: which props revealed
+      questionsUsed:0,
+      eliminated:new Set(),
+      log:[],
+      guessMode:false,
+      selectedProp:null,  // step-2 state
     };
   }
 
-  function _agentName(i) {
-    const names=['Arlo','Bex','Cree','Dova','Emris','Fenn','Gael','Hira','Iven','Joss','Kade','Lemi','Mori','Neva','Orin','Pell','Quin','Rafe','Sela','Tavi','Uri','Vex','Wren','Xio','Yura','Zeph','Abra','Brin','Coda','Dex','Emi','Fox','Grael','Hext','Issa','Jax','Korra','Lev','Mora','Nox','Onyx','Pix','Quell','Ryn','Sov','Tyn','Ulm','Vel','Wex','Xan'];
-    return names[i % names.length];
-  }
-
-  /* ── Navigation ─────────────────────────────────────────── */
+  // ── Navigation ──
   function goSetup() {
-    stop();
-    App.setBreadcrumb('Outbreak');
-    App.showScreen('ob-setup');
+    App.setBreadcrumb('Creatures');
+    App.clearModeSettings();
+    App.showScreen('pf-setup');
     randSeed();
-    document.querySelectorAll('#ob-diff-grid .diff-btn').forEach(b=>b.classList.toggle('sel',b.dataset.diff==='easy'));
+    document.querySelectorAll('#pf-diff-grid .diff-btn').forEach(b=>b.classList.toggle('sel',b.dataset.diff==='easy'));
   }
 
   function start() {
-    stop();
-    const diff = document.querySelector('#ob-diff-grid .diff-btn.sel').dataset.diff;
-    let seed = document.getElementById('ob-seed-input').value.trim();
-    if(!seed){seed=App.randSeedStr();document.getElementById('ob-seed-input').value=seed;}
+    const diff=document.querySelector('#pf-diff-grid .diff-btn.sel').dataset.diff;
+    let seed=document.getElementById('pf-seed-input').value.trim();
+    if(!seed){seed=App.randSeedStr();document.getElementById('pf-seed-input').value=seed;}
     App.setSeed(seed);
-    S = _freshState(diff, seed);
-    _selectedDisease = null;
-    _tool = 'observe';
-    _playing = false;
-    _speed = 1;
-    _dragStart = _dragCur = null;
-    App.showScreen('ob-game');
-    _initCanvas();
-    _renderSidebar();
-    _renderUI();
-    _rafLoop(performance.now());
+    S=_freshState(diff,seed);
+    App.showScreen('pf-game');
+    _render();
   }
 
-  function stop() {
-    _playing = false;
-    if (_raf) { cancelAnimationFrame(_raf); _raf=null; }
+  function randSeed() { document.getElementById('pf-seed-input').value=App.randSeedStr(); }
+
+  // ── Render ──
+  function _render() {
+    _renderStatus();
+    _renderTarget();
+    _renderBoard();
+    _renderQuestionPanel();
+    _renderLog();
   }
 
-  function randSeed() { document.getElementById('ob-seed-input').value = App.randSeedStr(); }
-
-  /* ── Canvas init ─────────────────────────────────────────── */
-  function _initCanvas() {
-    const canvas = document.getElementById('ob-canvas');
-    canvas.width  = CW;
-    canvas.height = CH;
-
-    canvas.onmousedown = _onMouseDown;
-    canvas.onmousemove = _onMouseMove;
-    canvas.onmouseup   = _onMouseUp;
-    canvas.onclick     = _onClick;
+  function _renderStatus() {
+    const remaining=S.creatures.length-S.eliminated.size;
+    document.getElementById('pf-used').textContent=S.questionsUsed;
+    document.getElementById('pf-remaining').textContent=remaining;
+    // Tier badge
+    const tier=_tierFor(S.questionsUsed);
+    const tb=document.getElementById('pf-tier-badge');
+    tb.innerHTML=`<span class="tier-badge ${tier}">${_tierLabel(tier)}</span>`;
   }
 
-  function _canvasXY(e) {
-    const r = document.getElementById('ob-canvas').getBoundingClientRect();
-    return { x:(e.clientX-r.left)*(CW/r.width), y:(e.clientY-r.top)*(CH/r.height) };
-  }
+  function _renderTarget() {
+    // Silhouette
+    const sz=80;
+    const silWrap=document.getElementById('pf-sil-wrap');
+    silWrap.innerHTML=CreatureRenderer.renderSilhouette(sz,Math.round(sz*1.2));
 
-  /* ── Mouse handlers ──────────────────────────────────────── */
-  function _onMouseDown(e) {
-    if (_tool==='quarantine') {
-      _dragStart = _canvasXY(e);
-      _dragCur   = {..._dragStart};
-      document.getElementById('ob-drag-hint').style.display='';
+    // Known properties as tags
+    const knownsEl=document.getElementById('pf-knowns');
+    knownsEl.innerHTML='';
+    // A property is known once every creature still in play shares its value
+    const confirmed={};
+    const live=S.creatures.filter(c=>!S.eliminated.has(c.id));
+    if(S.questionsUsed>0) for(const p of S.cfg.props){
+      if(live.length&&live.every(c=>c[p]===live[0][p])) confirmed[p]=live[0][p];
     }
-  }
-  function _onMouseMove(e) {
-    if (_tool==='quarantine' && _dragStart) {
-      _dragCur = _canvasXY(e);
-    }
-  }
-  function _onMouseUp(e) {
-    if (_tool==='quarantine' && _dragStart) {
-      const p = _canvasXY(e);
-      const x = Math.min(_dragStart.x,p.x), y=Math.min(_dragStart.y,p.y);
-      const w = Math.abs(p.x-_dragStart.x), h=Math.abs(p.y-_dragStart.y);
-      if (w>20&&h>20) _placeQuarantine(x,y,w,h);
-      _dragStart=_dragCur=null;
-      document.getElementById('ob-drag-hint').style.display='none';
-    }
-  }
-  function _onClick(e) {
-    const pos = _canvasXY(e);
-    if (_tool==='quarantine') return; // handled by drag
-    if (_tool==='remove-q') { _removeQuarantine(pos); return; }
-    const agent = _agentAt(pos);
-    if (!agent) return;
-    if (_tool==='observe') _showAgentModal(agent);
-    else if (_tool==='test') _testAgent(agent);
-  }
 
-  function _agentAt(pos) {
-    let closest=null, minD=AGENT_R*2.5;
-    for(const a of S.agents){
-      const d=Math.hypot(a.x-pos.x,a.y-pos.y);
-      if(d<minD){minD=d;closest=a;}
-    }
-    return closest;
-  }
-
-  /* ── Tools ───────────────────────────────────────────────── */
-  function setTool(t) {
-    _tool = t;
-    _dragStart=_dragCur=null;
-    ['observe','test','quarantine','remove-q'].forEach(id=>{
-      const btn=document.getElementById('tool-'+id);
-      if(btn) btn.className='btn'+(t===id?' active-tool':'');
-    });
-    document.getElementById('ob-tool-label').textContent =
-      t==='observe'?'Tool: Follow agent':
-      t==='test'?'Tool: Test agent (costs 1 action)':
-      t==='quarantine'?'Tool: Drag to place quarantine (costs 1 action)':
-      'Tool: Click quarantine to remove it (costs 1 action)';
-    document.getElementById('ob-drag-hint').style.display='none';
-  }
-
-  function _placeQuarantine(x,y,w,h) {
-    if (S.actionsUsed>=S.actionsTotal){ _notif('No actions remaining.','warn'); return; }
-    S.quarantines.push({x,y,w,h});
-    S.actionsUsed++;
-    _renderUI();
-    _notif('🚧 Quarantine placed. Agents cannot cross this boundary.','good');
-  }
-
-  function _removeQuarantine(pos) {
-    if (S.actionsUsed>=S.actionsTotal){ _notif('No actions remaining.','warn'); return; }
-    const idx = S.quarantines.findIndex(q=>pos.x>=q.x&&pos.x<=q.x+q.w&&pos.y>=q.y&&pos.y<=q.y+q.h);
-    if (idx<0){ _notif('Click inside a quarantine zone to remove it.',''); return; }
-    S.quarantines.splice(idx,1);
-    S.actionsUsed++;
-    _renderUI();
-    _notif('Quarantine removed.','');
-  }
-
-  function _testAgent(agent) {
-    if (S.actionsUsed>=S.actionsTotal){ _notif('No actions remaining.','warn'); return; }
-    S.actionsUsed++;
-    const result = agent.state; // reveal true state
-    agent.testLog.push({day:S.day, result});
-    // Also start following if not already
-    if(!agent.followed){ agent.followed=true; S.followed.push(agent.id); }
-    _renderUI();
-    _renderFollowPanel();
-    const stateStr = result==='incubating'?'⚠️ infected but not yet symptomatic':result==='healthy'?'✅ healthy':result==='symptomatic'?'🔴 symptomatic':'🔵 recovered';
-    _notif(`🧪 Test result for ${agent.name}: ${stateStr}`, result==='incubating'?'warn':result==='healthy'?'good':'');
-    App.closeModal('ob-agent-modal');
-  }
-
-  function _showAgentModal(agent) {
-    document.getElementById('ob-agent-name').textContent = agent.name;
-    const visState = agent.state==='incubating'?'appears healthy (incubating)':agent.state;
-    document.getElementById('ob-agent-info').innerHTML =
-      `<strong>Visible state:</strong> ${visState}<br>` +
-      `<strong>Following:</strong> ${agent.followed?'Yes':'No'}<br>` +
-      (agent.testLog.length>0?`<strong>Last test (day ${agent.testLog[agent.testLog.length-1].day}):</strong> ${agent.testLog[agent.testLog.length-1].result}`:'');
-
-    // Timeline
-    const tl = document.getElementById('ob-agent-timeline-wrap');
-    tl.innerHTML='<div style="font-size:11px;color:var(--ink-soft);margin-bottom:6px">State history (what you can observe):</div>';
-    const tlRow = document.createElement('div'); tlRow.className='follow-timeline';
-    for(const entry of agent.stateLog.slice(-14)){
-      const d=document.createElement('div');
-      const vis = entry.state==='incubating'?'healthy':entry.state; // only visible states
-      d.className=`ft-day ${vis==='symptomatic'?'symptom':vis==='recovered'?'recovered':'healthy'}`;
-      d.title=`Day ${entry.day}: ${vis}`; d.textContent=entry.day;
-      tlRow.appendChild(d);
-    }
-    tl.appendChild(tlRow);
-
-    const followBtn=document.getElementById('ob-agent-follow-btn');
-    followBtn.textContent=agent.followed?'Unfollow':'Follow this agent';
-    followBtn.onclick=()=>{
-      agent.followed=!agent.followed;
-      if(agent.followed&&!S.followed.includes(agent.id)) S.followed.push(agent.id);
-      else if(!agent.followed) S.followed=S.followed.filter(id=>id!==agent.id);
-      _renderFollowPanel();
-      App.closeModal('ob-agent-modal');
-    };
-    App.showModal('ob-agent-modal');
-  }
-
-  /* ── Simulation ──────────────────────────────────────────── */
-  function _rafLoop(now) {
-    _raf = requestAnimationFrame(_rafLoop);
-    const elapsed = now - _lastTick;
-    const interval = TICK_MS / _speed;
-    if (_playing && elapsed >= interval) {
-      _lastTick = now;
-      _simulateTick();
-    }
-    _draw();
-  }
-
-  function _simulateTick() {
-    const d = S.actual;
-    S.tick++;
-
-    // Move agents
-    for (const a of S.agents) {
-      // Gentle random walk: nudge velocity slightly
-      a.vx += (Math.random()-0.5)*0.3;
-      a.vy += (Math.random()-0.5)*0.3;
-      // Normalise speed
-      const spd = Math.hypot(a.vx,a.vy);
-      if(spd>AGENT_SPEED*1.5){a.vx=a.vx/spd*AGENT_SPEED*1.5;a.vy=a.vy/spd*AGENT_SPEED*1.5;}
-      if(spd<AGENT_SPEED*0.5){a.vx=a.vx/spd*AGENT_SPEED*0.7;a.vy=a.vy/spd*AGENT_SPEED*0.7;}
-
-      // Propose new position
-      let nx=a.x+a.vx, ny=a.y+a.vy;
-
-      // Bounce off canvas walls
-      if(nx<AGENT_R){nx=AGENT_R;a.vx=Math.abs(a.vx);}
-      if(nx>CW-AGENT_R){nx=CW-AGENT_R;a.vx=-Math.abs(a.vx);}
-      if(ny<AGENT_R){ny=AGENT_R;a.vy=Math.abs(a.vy);}
-      if(ny>CH-AGENT_R){ny=CH-AGENT_R;a.vy=-Math.abs(a.vy);}
-
-      // Quarantine boundary collision
-      for(const q of S.quarantines){
-        const inQ  = nx>=q.x&&nx<=q.x+q.w&&ny>=q.y&&ny<=q.y+q.h;
-        const wasInQ = a.x>=q.x&&a.x<=q.x+q.w&&a.y>=q.y&&a.y<=q.y+q.h;
-        if(inQ&&!wasInQ){
-          // Entering quarantine — bounce back
-          if(nx<q.x||nx>q.x+q.w) a.vx=-a.vx;
-          else a.vy=-a.vy;
-          nx=a.x; ny=a.y;
-        }
+    const remaining=S.creatures.length-S.eliminated.size;
+    if(Object.keys(confirmed).length>0){
+      for(const[p,v] of Object.entries(confirmed)){
+        const tag=document.createElement('span'); tag.className='known-tag';
+        tag.textContent=`${PROPS[p].label}: ${v}`;
+        knownsEl.appendChild(tag);
       }
-      a.x=nx; a.y=ny;
+      document.getElementById('pf-target-desc').textContent=`${remaining} creature${remaining!==1?'s':''} still possible.`;
+    } else {
+      document.getElementById('pf-target-desc').textContent='Ask questions to learn its features.';
+    }
+  }
+
+  function _renderBoard() {
+    const board=document.getElementById('pf-board');
+    board.innerHTML='';
+    const sz=CELL_SIZES[S.diff];
+    for(const c of S.creatures){
+      const card=document.createElement('div');
+      const elim=S.eliminated.has(c.id);
+      card.className='c-card'+(elim?' eliminated':'')+(S.guessMode&&!elim?' guess-live':'');
+      card.dataset.id=c.id;
+      const svgDiv=document.createElement('div');
+      svgDiv.innerHTML=CreatureRenderer.render(c,sz,Math.round(sz*1.2));
+      card.appendChild(svgDiv);
+      const name=document.createElement('div'); name.className='c-name'; name.textContent=c.name;
+      card.appendChild(name);
+      card.onclick=()=>{
+        if(S.guessMode&&!elim) _makeGuess(c);
+        else if(!S.guessMode&&!elim) _inspectCreature(c,sz);
+      };
+      board.appendChild(card);
+    }
+    const remaining=S.creatures.length-S.eliminated.size;
+    document.getElementById('pf-board-label').textContent=
+      S.guessMode?`Click the creature you think is the target (${remaining} still possible)`
+                 :`${remaining} creature${remaining!==1?'s':''} remaining. Click any to inspect.`;
+  }
+
+  function _inspectCreature(c,sz){
+    document.getElementById('pf-inspect-name').textContent=c.name;
+    document.getElementById('pf-inspect-svg').innerHTML=CreatureRenderer.render(c,100,120);
+    const propsEl=document.getElementById('pf-inspect-props'); propsEl.innerHTML='';
+    for(const p of S.cfg.props) propsEl.innerHTML+=`<div><strong style="color:var(--ink-soft);font-size:11px">${PROPS[p].label}:</strong> ${c[p]}</div>`;
+    App.showModal('pf-inspect-modal');
+  }
+
+  // ── Question panel ──
+  function _renderQuestionPanel() {
+    const easyPanel=document.getElementById('q-easy-panel');
+    const stdPanel=document.getElementById('q-standard-panel');
+
+    if(S.cfg.mode==='easy'){
+      easyPanel.style.display=''; stdPanel.style.display='none';
+      _renderEasyProps();
+    } else {
+      easyPanel.style.display='none'; stdPanel.style.display='';
+      if(!S.selectedProp) _showStep1(); else _showStep2(S.selectedProp);
     }
 
-    // Transmission: symptomatic agents can infect healthy/recovered-no-immunity
-    for(const inf of S.agents){
-      if(inf.state!=='symptomatic'&&inf.state!=='incubating') continue;
-      for(const sus of S.agents){
-        if(sus.id===inf.id) continue;
-        if(sus.state!=='healthy') continue;
-        if(d.immunity&&sus.state==='recovered') continue;
-        const dist=Math.hypot(inf.x-sus.x,inf.y-sus.y);
-        if(dist<d.radius&&Math.random()<d.rate){
-          sus.state='incubating';
-          sus.ticksInState=0;
-          sus.daysInState=0;
-        }
+    // Guess link
+    const link=document.getElementById('pf-guess-link');
+    const prompt=document.getElementById('pf-guess-prompt');
+    if(S.guessMode){
+      link.textContent='Cancel guess';
+      prompt.classList.add('vis');
+    } else {
+      link.textContent='Make a guess';
+      prompt.classList.remove('vis');
+    }
+  }
+
+  function _renderEasyProps(){
+    const el=document.getElementById('q-easy-props'); el.innerHTML='';
+    for(const p of S.cfg.props){
+      const asked=S.askedEasyProps.has(p);
+      const btn=document.createElement('button');
+      btn.className='q-prop-btn'+(asked?' exhausted':'');
+      btn.disabled=asked||S.guessMode;
+      btn.innerHTML=`What is its <strong>${PROPS[p].label.toLowerCase()}</strong>?`;
+      if(asked){
+        const val=S.target[p];
+        btn.innerHTML+=`<span style="margin-left:auto;color:var(--leaf-dark);font-size:11px">${val}</span>`;
       }
-    }
-
-    // Advance disease states
-    for(const a of S.agents){
-      if(a.state==='healthy'||a.state==='recovered') continue;
-      a.ticksInState++;
-      if(a.state==='incubating'&&a.ticksInState>=d.incubation*TICKS_PER_DAY){
-        a.state='symptomatic'; a.ticksInState=0; a.daysInState=0;
-      } else if(a.state==='symptomatic'&&a.ticksInState>=5*TICKS_PER_DAY){
-        // Recovery after ~5 days of symptoms
-        a.state=d.immunity?'recovered':'healthy';
-        a.ticksInState=0; a.daysInState=0;
-      }
-    }
-
-    // Advance day counter
-    if(S.tick%TICKS_PER_DAY===0){
-      S.day++;
-      // Record state log for all agents
-      for(const a of S.agents){
-        a.stateLog.push({day:S.day, state:a.state});
-      }
-      // Record day history
-      const symp=S.agents.filter(a=>a.state==='symptomatic').length;
-      const rec =S.agents.filter(a=>a.state==='recovered').length;
-      S.dayHistory.push({day:S.day,symptomatic:symp,recovered:rec});
-      _renderUI();
-      _renderFollowPanel();
-      _renderChart();
+      btn.onclick=()=>_askEasyProp(p);
+      el.appendChild(btn);
     }
   }
 
-  /* ── Time controls ───────────────────────────────────────── */
-  function stepDay() {
-    if(_playing) return;
-    for(let i=0;i<TICKS_PER_DAY;i++) _simulateTick();
-    _renderUI(); _renderFollowPanel(); _renderChart();
+  function _showStep1(){
+    document.getElementById('q-step1').classList.add('active');
+    document.getElementById('q-step2').classList.remove('active');
+    const list=document.getElementById('q-prop-list'); list.innerHTML='';
+    const step1lbl=document.querySelector('#q-step1 .q-step-label');
+    step1lbl.textContent=S.guessMode?'(questions are off while guessing)':'Choose a feature';
+
+    for(const p of S.cfg.props){
+      // Count how many values still have unanswered questions for this prop
+      const unanswered=PROPS[p].values.filter(v=>!(p+':'+v in S.askedValues)).length;
+      const exhausted=unanswered===0;
+      const btn=document.createElement('button');
+      btn.className='q-prop-btn'+(exhausted?' exhausted':'');
+      btn.disabled=exhausted||S.guessMode;
+      btn.innerHTML=`<span>${PROPS[p].label}</span><span class="q-prop-count">${unanswered} left</span>`;
+      btn.onclick=()=>{ S.selectedProp=p; _render(); };
+      list.appendChild(btn);
+    }
   }
 
-  function togglePlay() {
-    _playing=!_playing;
-    document.getElementById('ob-play-btn').textContent=_playing?'⏸ Pause':'▶ Play';
-    if(_playing) _lastTick=performance.now();
-  }
+  function _showStep2(prop){
+    document.getElementById('q-step1').classList.remove('active');
+    document.getElementById('q-step2').classList.add('active');
+    document.getElementById('q-val-header').innerHTML=`Is its <strong>${PROPS[prop].label.toLowerCase()}</strong>…`;
+    const list=document.getElementById('q-val-list'); list.innerHTML='';
 
-  function setSpeed(s, btn) {
-    _speed=s;
-    document.querySelectorAll('.speed-btn').forEach(b=>b.classList.toggle('active',b.dataset.speed==s));
-  }
-
-  /* ── Diagnosis ───────────────────────────────────────────── */
-  function selectDisease(id) {
-    _selectedDisease=id;
-    S.selectedDiseaseId=id;
-    document.querySelectorAll('.disease-item').forEach(el=>el.classList.toggle('selected',el.dataset.id===id));
-    document.getElementById('ob-diagnose-btn').disabled=false;
-  }
-
-  function submitDiagnosis() {
-    if(!_selectedDisease){_notif('Select a disease first.','warn');return;}
-    stop();
-    const correct=_selectedDisease===S.actual.id;
-    _showOutcome(correct);
-  }
-
-  function _showOutcome(correct) {
-    App.showScreen('ob-success');
-    const tier=_tier(S.actionsUsed);
-    document.getElementById('ob-win-title').textContent=correct?'Correct diagnosis!':'Wrong diagnosis.';
-    document.getElementById('ob-win-title').className='outcome-title '+(correct?'win':'fail');
-    document.getElementById('ob-win-sub').textContent=correct
-      ?`You correctly identified ${S.actual.name} using ${S.actionsUsed} action${S.actionsUsed!==1?'s':''}.`
-      :`You guessed ${DISEASES.find(d=>d.id===_selectedDisease)?.name||'unknown'}, but it was ${S.actual.name}.`;
-
-    if(correct) document.getElementById('ob-win-tier').innerHTML=`<span class="tier-badge ${tier}">${_tierLabel(tier)}</span>`;
-
-    const symp=S.agents.filter(a=>a.state==='symptomatic'||a.state==='recovered'||a.stateLog.some(e=>e.state==='symptomatic')).length;
-    document.getElementById('ob-win-stats').innerHTML=`
-      <div class="stat-box"><div class="stat-v">${S.day}</div><div class="stat-l">Days observed</div></div>
-      <div class="stat-box"><div class="stat-v">${S.actionsUsed}</div><div class="stat-l">Actions used</div></div>
-      <div class="stat-box"><div class="stat-v">${symp}</div><div class="stat-l">Cases total</div></div>`;
-
-    // Disease reveal table
-    const table=document.getElementById('ob-reveal-table');
-    table.innerHTML=`<tr><th>Disease</th><th>Radius</th><th>Rate</th><th>Incubation</th><th>Immunity</th></tr>`;
-    for(const d of DISEASES.filter(d=>S.cfg.diseases.includes(d.id))){
-      const isActual=d.id===S.actual.id;
-      const isGuessed=d.id===_selectedDisease&&!isActual;
-      const tr=document.createElement('tr');
-      if(isActual) tr.className='actual';
-      else if(isGuessed) tr.className='guessed';
-      tr.innerHTML=`<td>${isActual?'✔ ':''}${d.name}</td><td>${d.radius<25?'tight':d.radius<45?'medium':'wide'}</td><td>${d.rate<0.008?'low':d.rate<0.015?'medium':'high'}</td><td>${d.incubation} days</td><td>${d.immunity?'Yes':'No'}</td>`;
-      table.appendChild(tr);
+    // Count how many live creatures have each value (useful hint without revealing answer)
+    const liveCounts={};
+    for(const v of PROPS[prop].values){
+      liveCounts[v]=S.creatures.filter(c=>!S.eliminated.has(c.id)&&c[prop]===v).length;
     }
 
-    document.getElementById('ob-win-reflect').innerHTML=_reflectText(correct,tier);
+    for(const v of PROPS[prop].values){
+      const key=prop+':'+v;
+      const answered=key in S.askedValues;
+      const row=document.createElement('div');
+      let cls='q-val-row'+(answered?(S.askedValues[key]?' answered-yes':' answered-no'):'');
+      row.className=cls;
+      const liveCount=liveCounts[v];
+      row.innerHTML=`<span>${v}</span><span class="q-val-elim">${answered?(S.askedValues[key]?'yes':'no'):(liveCount+' live')}</span>`;
+      if(!answered&&!S.guessMode) row.onclick=()=>_askValue(prop,v);
+      list.appendChild(row);
+    }
   }
 
-  function _reflectText(correct,tier){
-    const actual=S.actual;
-    return `<strong>💭 For reflection</strong>
-      The disease was <strong>${actual.name}</strong> — ${actual.desc.toLowerCase()}.
+  function backToProps(){
+    S.selectedProp=null;
+    _render();
+  }
+
+  // ── Asking ──
+  function _askEasyProp(prop){
+    const answer=S.target[prop];
+    S.askedEasyProps.add(prop);
+    S.questionsUsed++;
+    const prevElim=S.eliminated.size;
+    for(const c of S.creatures) if(c[prop]!==answer) S.eliminated.add(c.id);
+    const newElim=S.eliminated.size-prevElim;
+    S.log.push({q:`What is its ${PROPS[prop].label.toLowerCase()}?`,a:answer,yes:true,elim:newElim,qNum:S.questionsUsed});
+    _showNotif(`Its ${PROPS[prop].label.toLowerCase()} is <span class="hl">${answer}</span>. ${newElim} eliminated.`,'good');
+    _checkAutoWin(); _render();
+  }
+
+  function _askValue(prop,value){
+    const answer=S.target[prop]===value;
+    const key=prop+':'+value;
+    S.askedValues[key]=answer;
+    S.questionsUsed++;
+    S.selectedProp=null;
+    const prevElim=S.eliminated.size;
+    for(const c of S.creatures){
+      if(answer && c[prop]!==value) S.eliminated.add(c.id);
+      if(!answer && c[prop]===value) S.eliminated.add(c.id);
+    }
+    const newElim=S.eliminated.size-prevElim;
+    S.log.push({q:`Does it have ${PROPS[prop].label.toLowerCase()}: ${value}?`,a:answer?'Yes':'No',yes:answer,elim:newElim,qNum:S.questionsUsed});
+    _showNotif(
+      `<span class="${answer?'hl':'alert-txt'}">${answer?'Yes.':'No.'}</span> ${PROPS[prop].label}: ${answer?'':'not '}<strong>${value}</strong>. ${newElim} eliminated.`,
+      answer?'good':''
+    );
+    _checkAutoWin(); _render();
+  }
+
+  function _checkAutoWin(){
+    const live=S.creatures.filter(c=>!S.eliminated.has(c.id));
+    if(live.length===1&&live[0].id===S.target.id) setTimeout(()=>_showWin(true),400);
+  }
+
+  // ── Guess mode ──
+  function toggleGuess(){
+    S.guessMode=!S.guessMode;
+    S.selectedProp=null;
+    _render();
+  }
+
+  function _makeGuess(creature){
+    S.guessMode=false;
+    if(creature.id===S.target.id){
+      _showWin(false);
+    } else {
+      S.eliminated.add(creature.id);
+      S.questionsUsed++;
+      S.log.push({q:`Guess: ${creature.name}`,a:'Wrong',yes:false,elim:1,qNum:S.questionsUsed,isGuess:true});
+      const card=document.querySelector(`.c-card[data-id="${creature.id}"]`);
+      if(card){card.style.animation='wrong-flash 0.5s ease-out';setTimeout(()=>card.style.animation='',500);}
+      _showNotif(`That wasn't it. ${creature.name} is eliminated.`,'warn');
+      _render();
+    }
+  }
+
+  // ── Outcomes ──
+  function _showWin(autoFound){
+    App.showScreen('pf-success');
+    const sz=110;
+    document.getElementById('pf-win-creature').innerHTML=CreatureRenderer.render(S.target,sz,Math.round(sz*1.2));
+    const tier=_tierFor(S.questionsUsed);
+    document.getElementById('pf-win-tier').innerHTML=`<span class="tier-badge ${tier}" style="font-size:16px;padding:6px 18px">${_tierLabel(tier)}</span>`;
+    document.getElementById('pf-win-sub').textContent=autoFound
+      ?`Your questions left only one candidate: ${S.target.name}.`
+      :`You correctly identified ${S.target.name}.`;
+    document.getElementById('pf-win-stats').innerHTML=`
+      <div class="stat-box"><div class="stat-v">${S.questionsUsed}</div><div class="stat-l">Questions used</div></div>
+      <div class="stat-box"><div class="stat-v">${S.opt}</div><div class="stat-l">Fewest guaranteed</div></div>
+      <div class="stat-box"><div class="stat-v">${S.creatures.length}</div><div class="stat-l">Total creatures</div></div>`;
+    document.getElementById('pf-win-reflect').innerHTML=_reflectText();
+  }
+
+  function _reflectText(){
+    const n=S.cfg.count, used=S.questionsUsed, tier=_tierFor(used);
+    let body;
+    if(S.cfg.mode==='easy'){
+      body=`There were ${n} creatures. Each question reveals the exact value of one property, so a property with many values splits the field more finely than one with few. For this board, the best strategy guarantees a find in <strong>${S.opt} question${S.opt!==1?'s':''}</strong>. You used ${used}.`;
+    } else {
+      const lb=Math.ceil(Math.log2(n));
+      body=`There were ${n} creatures. A yes/no answer can at best cut the field in half, so no strategy can guarantee fewer than ⌈log₂${n}⌉ = ${lb} questions. For this board, the best strategy guarantees a find in <strong>${S.opt}</strong>. You used ${used}.
       <br><br>
-      ${correct?`You identified it${tier==='gold'?' with remarkable efficiency':tier==='silver'?' efficiently':' — though it took more actions than necessary'}.`:'You made the wrong diagnosis. Look at the table above — how is the actual disease different from your guess?'}
+      The most informative question splits the remaining creatures as evenly as possible, so that either answer rules out about half. A question that almost certainly gets a "no" and rules out a single creature mostly wastes a turn.`;
+    }
+    return `<strong>Looking back</strong>${body}
       <br><br>
-      <strong>What each parameter tells you, if you look carefully:</strong><br>
-      <em>Transmission radius</em>: how quickly transmission spreads across the community. Wide-radius diseases reach people across the space; tight ones require close contact.<br>
-      <em>Rate</em>: how steep the early symptom curve is.<br>
-      <em>Incubation</em>: the gap between initial spread and visible symptoms. Long incubation means the disease looks quiet even as it spreads.<br>
-      <em>Immunity</em>: whether recovered agents re-enter the susceptible pool. No immunity means the outbreak can smolder indefinitely.
-      <br><br>
-      Notice what you could have learned earlier with more strategic testing — and what required actually intervening (quarantine) rather than just watching.`;
+      ${tier==='gold'?'That matches the best strategy for this board.':tier==='silver'?'That is a few questions above the best strategy. Look back for a question that could have split the field more evenly.':'That is well above the best strategy. Look back for questions that could only rule out a creature or two.'}`;
   }
 
-  /* ── Render ──────────────────────────────────────────────── */
-  function _renderUI() {
-    document.getElementById('ob-day').textContent=S.day;
-    const symp=S.agents.filter(a=>a.state==='symptomatic').length;
-    const rec =S.agents.filter(a=>a.state==='recovered').length;
-    document.getElementById('ob-symptomatic').textContent=symp;
-    document.getElementById('ob-recovered').textContent=rec;
-    document.getElementById('ob-actions').textContent=S.actionsTotal-S.actionsUsed;
-    const tier=_tier(S.actionsUsed);
-    document.getElementById('ob-tier-badge').innerHTML=`<span class="tier-badge ${tier}">${_tierLabel(tier)}</span>`;
-
-    // Action pips
-    const track=document.getElementById('ob-action-track'); track.innerHTML='';
-    for(let i=0;i<S.actionsTotal;i++){
-      const p=document.createElement('div');
-      p.className='a-pip'+(i<S.actionsUsed?' used':'');
-      track.appendChild(p);
-    }
-  }
-
-  function _renderSidebar() {
-    const list=document.getElementById('ob-disease-list'); list.innerHTML='';
-    for(const d of DISEASES.filter(d=>S.cfg.diseases.includes(d.id))){
-      const item=document.createElement('div');
-      item.className='disease-item'; item.dataset.id=d.id;
-      item.innerHTML=`<div class="disease-dot" style="background:${d.color}"></div><div><div class="disease-name">${d.name}</div><div class="disease-hint">${d.desc}</div></div>`;
-      item.onclick=()=>selectDisease(d.id);
-      list.appendChild(item);
-    }
-  }
-
-  function _renderFollowPanel() {
-    const followed=S.agents.filter(a=>a.followed);
-    const card=document.getElementById('ob-follow-card');
-    if(!followed.length){card.style.display='none';return;}
-    card.style.display='';
-    const list=document.getElementById('ob-follow-list'); list.innerHTML='';
-    for(const a of followed){
-      const entry=document.createElement('div'); entry.className='follow-entry';
-      const name=document.createElement('div'); name.className='follow-name';
-      const dot=document.createElement('div');
-      dot.style.cssText=`width:10px;height:10px;border-radius:50%;background:${a.state==='symptomatic'?C_SYMPTOM:a.state==='recovered'?C_RECOVERED:C_HEALTHY}`;
-      name.appendChild(dot);
-      name.appendChild(document.createTextNode(a.name));
-      // Test badge if tested
-      if(a.testLog.length>0){
-        const tb=document.createElement('span');
-        tb.style.cssText='font-size:9px;background:rgba(74,144,64,0.15);color:var(--leaf-dark);padding:1px 5px;border-radius:8px;margin-left:4px';
-        tb.textContent='tested';
-        name.appendChild(tb);
-      }
-      entry.appendChild(name);
-
-      // Timeline strip (last 14 days)
-      const tl=document.createElement('div'); tl.className='follow-timeline';
-      const log=a.stateLog.slice(-14);
-      for(const e of log){
-        const d=document.createElement('div');
-        // Tests override visible state
-        const test=a.testLog.find(t=>t.day===e.day);
-        const dispState=test?test.result:(e.state==='incubating'?'healthy':e.state);
-        d.className=`ft-day ${dispState==='symptomatic'?'symptom':dispState==='recovered'?'recovered':test&&dispState==='incubating'?'tested-inc':test?'tested-ok':'healthy'}`;
-        d.title=`Day ${e.day}: ${test?test.result+' (tested)':dispState}`;
-        d.textContent=e.day<=9?e.day:'·';
-        tl.appendChild(d);
-      }
-      entry.appendChild(tl);
-      list.appendChild(entry);
-    }
-  }
-
-  function _renderChart() {
-    const canvas=document.getElementById('ob-chart-canvas');
-    const ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,270,70);
-    if(!S.dayHistory.length) return;
-    const maxCount=Math.max(1,...S.dayHistory.map(e=>e.symptomatic+e.recovered));
-    const dx=270/Math.max(S.dayHistory.length,1);
-    ctx.beginPath();
-    for(let i=0;i<S.dayHistory.length;i++){
-      const x=i*dx, y=70*(1-S.dayHistory[i].symptomatic/maxCount);
-      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    }
-    ctx.strokeStyle='#6aaa5a'; ctx.lineWidth=2; ctx.stroke();
-
-    ctx.beginPath();
-    for(let i=0;i<S.dayHistory.length;i++){
-      const x=i*dx, y=70*(1-S.dayHistory[i].recovered/maxCount);
-      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    }
-    ctx.strokeStyle='#7080b0'; ctx.lineWidth=2; ctx.stroke();
-  }
-
-  /* ── Canvas draw ─────────────────────────────────────────── */
-  function _draw() {
-    const canvas=document.getElementById('ob-canvas');
-    if(!canvas) return;
-    const ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,CW,CH);
-
-    // Background
-    ctx.fillStyle='#0e1a2e'; ctx.fillRect(0,0,CW,CH);
-    // Subtle grid
-    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
-    for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
-    for(let y=0;y<CH;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
-
-    // Quarantine zones
-    for(const q of S.quarantines){
-      ctx.fillStyle=C_QZONE; ctx.fillRect(q.x,q.y,q.w,q.h);
-      ctx.strokeStyle=C_QZONE_BORDER; ctx.lineWidth=2; ctx.setLineDash([6,3]);
-      ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
-      ctx.fillStyle='rgba(200,80,40,0.55)'; ctx.font='bold 10px Nunito,sans-serif'; ctx.textAlign='center';
-      ctx.fillText('QUARANTINE',q.x+q.w/2,q.y+q.h/2);
-    }
-
-    // Drag preview
-    if(_dragStart&&_dragCur){
-      const x=Math.min(_dragStart.x,_dragCur.x),y=Math.min(_dragStart.y,_dragCur.y);
-      const w=Math.abs(_dragCur.x-_dragStart.x),h=Math.abs(_dragCur.y-_dragStart.y);
-      ctx.fillStyle='rgba(200,80,40,0.12)'; ctx.fillRect(x,y,w,h);
-      ctx.strokeStyle='rgba(200,80,40,0.8)'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
-      ctx.strokeRect(x,y,w,h); ctx.setLineDash([]);
-    }
-
-    // Transmission radius preview for followed agents (faint ring)
-    for(const id of S.followed){
-      const a=S.agents.find(x=>x.id===id);
-      if(!a) continue;
-      ctx.beginPath(); ctx.arc(a.x,a.y,S.actual.radius,0,Math.PI*2);
-      ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.stroke();
-    }
-
-    // Agents
-    for(const a of S.agents){
-      // Visible state (incubating looks healthy)
-      const visState=a.state==='incubating'?'healthy':a.state;
-      const col=visState==='healthy'?C_HEALTHY:visState==='symptomatic'?C_SYMPTOM:C_RECOVERED;
-
-      // Follow ring
-      if(a.followed){
-        ctx.beginPath(); ctx.arc(a.x,a.y,AGENT_R+3.5,0,Math.PI*2);
-        ctx.strokeStyle=C_FOLLOW_RING; ctx.lineWidth=1.5; ctx.stroke();
-      }
-
-      // Body
-      ctx.beginPath(); ctx.arc(a.x,a.y,AGENT_R,0,Math.PI*2);
-      ctx.fillStyle=col; ctx.fill();
-
-      // Subtle inner highlight
-      ctx.beginPath(); ctx.arc(a.x-AGENT_R*0.28,a.y-AGENT_R*0.28,AGENT_R*0.35,0,Math.PI*2);
-      ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fill();
-    }
-
-    // Day label
-    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='bold 11px Nunito,sans-serif'; ctx.textAlign='right';
-    ctx.fillText(`Day ${S.day}`,CW-8,CH-8);
-  }
-
-  /* ── Notification ────────────────────────────────────────── */
-  function _notif(html,type){
-    const el=document.getElementById('ob-notif');
+  function _showNotif(html,type){
+    const el=document.getElementById('pf-notif');
     el.className='notif vis'+(type==='good'?' good':type==='warn'?' warn':'');
     el.innerHTML=html;
   }
 
-  /* ── Landing art animation ──────────────────────────────── */
-  function _initLandingArt() {
-    const canvas=document.getElementById('land-ob-canvas');
-    if(!canvas) return;
-    const W=canvas.offsetWidth||290, H=150;
-    canvas.width=W; canvas.height=H;
-    const ctx=canvas.getContext('2d');
-
-    // Mini simulation with a few dots
-    const dots=[];
-    for(let i=0;i<25;i++){
-      const state=i<3?'symptomatic':i<6?'incubating':'healthy';
-      dots.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.8,vy:(Math.random()-0.5)*0.8,state});
+  function _renderLog(){
+    const hl=document.getElementById('pf-log'); hl.innerHTML='';
+    if(!S.log.length){hl.innerHTML='<div style="font-size:11px;color:var(--ink-pale)">No questions asked yet.</div>';return;}
+    const tiers=_tiers();
+    for(const e of S.log.slice().reverse()){
+      const tierCls=e.qNum<=tiers.gold?'gold-q':e.qNum<=tiers.silver?'silver-q':'bronze-q';
+      const d=document.createElement('div'); d.className='a-entry';
+      const num=document.createElement('div'); num.className=`a-num ${tierCls}`; num.textContent=e.qNum;
+      const txt=document.createElement('div'); txt.className='a-text';
+      txt.innerHTML=`${e.q}<br><span class="a-ans ${e.yes?'yes':'no'}">${e.a}</span><span style="color:var(--ink-pale);font-size:10px"> · ${e.elim} eliminated</span>`;
+      d.appendChild(num); d.appendChild(txt); hl.appendChild(d);
     }
-    function drawLanding(){
-      ctx.fillStyle='#0e1a2e'; ctx.fillRect(0,0,W,H);
-      for(const d of dots){
-        d.x+=d.vx; d.y+=d.vy;
-        if(d.x<3||d.x>W-3){d.vx=-d.vx;d.x=Math.max(3,Math.min(W-3,d.x));}
-        if(d.y<3||d.y>H-3){d.vy=-d.vy;d.y=Math.max(3,Math.min(H-3,d.y));}
-        ctx.beginPath(); ctx.arc(d.x,d.y,4,0,Math.PI*2);
-        ctx.fillStyle=d.state==='symptomatic'?C_SYMPTOM:d.state==='incubating'?C_INCUBATE:C_HEALTHY;
-        ctx.fill();
-      }
-      requestAnimationFrame(drawLanding);
-    }
-    drawLanding();
   }
 
-  return {
-    goSetup, start, stop, randSeed,
-    stepDay, togglePlay, setSpeed,
-    setTool, selectDisease, submitDiagnosis,
-    _initLandingArt,
+  return { goSetup, start, randSeed, backToProps, toggleGuess };
+})();
+
+
+
+/* ═══════════════════════════════════════════════════════════
+   GARDEN
+   ═══════════════════════════════════════════════════════════ */
+const Garden = (() => {
+  const PARAMS = {
+    sunlight:    { label:'Sunlight',    short:'Sun',  icon:'☀️', values:['low','medium','high'],       color:'#c49020' },
+    water:       { label:'Water',       short:'H₂O',  icon:'💧', values:['scarce','moderate','ample'],  color:'#4a7aaa' },
+    temperature: { label:'Temperature', short:'Temp', icon:'🌡', values:['cold','mild','warm'],         color:'#b05030' },
+    fertilizer:  { label:'Fertilizer',  short:'Fert', icon:'🌿', values:['none','light','rich'],        color:'#6a9050' },
   };
+  const CONFIGS = {
+    easy:   { grid:4,  params:['sunlight','water'], goal:{height:30, days:6}  },
+    medium: { grid:8,  params:['sunlight','water','temperature'], goal:{height:45, days:8} },
+    hard:   { grid:12, params:['sunlight','water','temperature','fertilizer'], goal:{height:60, days:10} },
+  };
+  const SOIL_PX = 18;
+  let S = {};
+  function _freshState(diff, seedStr) {
+    const cfg=CONFIGS[diff], rng=App.mulberry32(App.seedFromStr(seedStr));
+    const pkeys=cfg.params, pdefs={}; pkeys.forEach(p=>pdefs[p]=PARAMS[p].values.slice());
+    const optimal={}, profiles={}, responseTables={};
+    const profilePool=['sharp','balanced','broad','flat','edge'];
+    for(const p of pkeys){
+      optimal[p]=pdefs[p][Math.floor(rng()*pdefs[p].length)];
+      const pool = diff==='easy' ? ['sharp','balanced','broad'] : diff==='medium' ? ['sharp','balanced','broad','flat'] : profilePool;
+      profiles[p]=pool[Math.floor(rng()*pool.length)];
+      responseTables[p]=_makeResponseTable(pdefs[p], optimal[p], profiles[p], rng);
+    }
+    const interactions=[];
+    if(diff!=='easy' && pkeys.length>=2){
+      const pairs=[]; for(let i=0;i<pkeys.length;i++) for(let j=i+1;j<pkeys.length;j++) pairs.push([pkeys[i],pkeys[j]]);
+      const useCount = diff==='hard' ? (rng()<0.75?2:1) : (rng()<0.55?1:0);
+      for(let k=0;k<useCount;k++){
+        const [a,b]=pairs.splice(Math.floor(rng()*pairs.length),1)[0];
+        interactions.push({a,b, bonus: 8 + Math.floor(rng()*9), targetA: optimal[a], targetB: optimal[b]});
+        if(!pairs.length) break;
+      }
+    }
+    const N=cfg.grid, cells=[];
+    for(let r=0;r<N;r++){
+      const row=[];
+      for(let c=0;c<N;c++){
+        const params={}; pkeys.forEach(p=>params[p]=null);
+        row.push({params, history:[], height:0});
+      }
+      cells.push(row);
+    }
+    return { diff, seedStr, N, pkeys, pdefs, optimal, profiles, responseTables, interactions, cells, day:1, topHeight:0, log:[], goal:{...cfg.goal}, sel:new Set(), drag:{active:false,startCell:null,endCell:null,startXY:null,curXY:null} };
+  }
+  function _makeResponseTable(values, optimal, profile, rng){
+    const peak=values.indexOf(optimal), maxD=Math.max(1,values.length-1), out={};
+    values.forEach((v,i)=>{
+      const d=Math.abs(i-peak)/maxD;
+      let s;
+      if(profile==='sharp') s = d===0 ? 100 : d<0.6 ? 58 : 14;
+      else if(profile==='balanced') s = 100 - d*55;
+      else if(profile==='broad') s = 100 - d*32;
+      else if(profile==='flat') s = 100 - d*12;
+      else if(profile==='edge') s = peak===0||peak===values.length-1 ? (i===peak?100:d<0.6?64:22) : (d===0?100:d<0.6?52:18);
+      else s=100-d*45;
+      s += Math.round((rng()-0.5)*4);
+      out[v]=Math.max(8, Math.min(100, Math.round(s)));
+    });
+    return out;
+  }
+  function _score(combo){
+    for(const p of S.pkeys) if(combo[p]===null) return 0;
+    let parts=[];
+    for(const p of S.pkeys) parts.push(S.responseTables[p][combo[p]]);
+    let s=parts.reduce((a,b)=>a+b,0)/parts.length;
+    for(const it of S.interactions){ if(combo[it.a]===it.targetA && combo[it.b]===it.targetB) s += it.bonus; }
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+  function _growthDelta(score, height){
+    const quality = (score-50)/50;
+    const comp = 1 + Math.min(0.55, height/120);
+    const delta = quality>=0 ? (1.8 + quality*4.2)*comp : (-0.6 + quality*2.1);
+    return delta;
+  }
+  function goSetup(){ App.setBreadcrumb('Garden'); App.clearModeSettings(); App.showScreen('garden-setup'); randSeed(); document.querySelectorAll('#g-diff-grid .diff-btn').forEach(b=>b.classList.toggle('sel',b.dataset.diff==='easy')); }
+  function start(){ const diff=document.querySelector('#g-diff-grid .diff-btn.sel').dataset.diff; let seed=document.getElementById('g-seed-input').value.trim(); if(!seed){seed=App.randSeedStr(); document.getElementById('g-seed-input').value=seed;} App.setSeed(seed); S=_freshState(diff, seed); App.showScreen('garden-game'); _render(); }
+  function retry(){ const seed=App.randSeedStr(); App.setSeed(seed); S=_freshState(S.diff, seed); App.showScreen('garden-game'); _render(); }
+  function randSeed(){ document.getElementById('g-seed-input').value=App.randSeedStr(); }
+  function _render(){ document.getElementById('g-day').textContent=S.day; document.getElementById('g-best').textContent=S.topHeight>0?Math.round(S.topHeight):'—'; _renderGoalBar(); _renderGarden(); _renderSidebar(); _updateRunBtn(); }
+  function _renderGoalBar(){ const best=Math.round(S.topHeight), target=S.goal.height, daysUsed=S.day-1, daysLeft=S.goal.days-daysUsed, pct=Math.min(100, Math.round(best/target*100)), won=best>=target, urgent=daysLeft<=2&&!won; const bar=document.getElementById('g-goal-bar'), fill=document.getElementById('g-goal-fill'); bar.className='goal-bar'+(urgent?' urgent':won?' achieved':''); fill.className='goal-fill'+(urgent?' urgent':''); fill.style.width=pct+'%'; document.getElementById('g-goal-label').textContent=`Tallest plant: ${best} of ${target}`; const daysEl=document.getElementById('g-goal-days'); daysEl.className='goal-days'+(urgent?' urgent':''); daysEl.textContent=won?'Target reached':`${daysLeft} day${daysLeft!==1?'s':''} left (${daysUsed} / ${S.goal.days} used)`; }
+  function _countUninit(){ let n=0; for(let r=0;r<S.N;r++) for(let c=0;c<S.N;c++) if(S.pkeys.some(p=>S.cells[r][c].params[p]===null)) n++; return n; }
+  function _updateRunBtn(){ const n=_countUninit(); document.getElementById('g-run-btn').disabled=n>0; const si=document.getElementById('g-uninit-stat'); si.innerHTML=n>0?`<span class="alert-txt">${n} plot${n>1?'s':''} not set</span>`:`<span style="color:var(--leaf-mid);font-weight:700">All plots set</span>`; }
+  function _cellW(){ return S.N<=4?80:S.N<=8?64:52; }
+  function _cellH(w){ return Math.round(w*2.2); }
+  function _renderGarden(){ const grid=document.getElementById('g-grid'); const w=_cellW(), h=_cellH(w); grid.style.gridTemplateColumns=`repeat(${S.N}, ${w}px)`; grid.innerHTML=''; for(let r=0;r<S.N;r++) for(let c=0;c<S.N;c++) grid.appendChild(_makeCell(r,c,w,h)); _attachDragEvents(); }
+  function _makeCell(r,c,w,h){ const cell=S.cells[r][c], uninit=S.pkeys.some(p=>cell.params[p]===null), div=document.createElement('div'); div.className='pcell'+(uninit?' uninit':'')+(S.sel.has(r+','+c)?' sel':'')+(!uninit&&cell.height>70?' thriving':''); div.style.cssText=`width:${w}px;height:${h}px`; div.dataset.r=r; div.dataset.c=c; div.appendChild(Object.assign(document.createElement('div'),{className:'pcell-soil'})); if(uninit){ div.appendChild(Object.assign(document.createElement('div'),{className:'uninit-mark', textContent:'?'})); } else { const air=document.createElement('div'); air.className='pcell-air'; if(cell.history.length>0){ const lastScore=cell.history[cell.history.length-1].score; App.drawPlantSVG(air, cell.height, lastScore, w, h-SOIL_PX); const cls=lastScore>=70?'hi':lastScore>=45?'md':'lo'; div.appendChild(Object.assign(document.createElement('div'),{className:'score-badge '+cls,textContent:String(Math.round(cell.height))})); } else { const nub=document.createElement('div'); nub.style.cssText='width:3px;height:6px;background:#8aaa70;border-radius:2px;opacity:0.5'; air.appendChild(nub); } div.appendChild(air); } return div; }
+  function _relXY(e,el){ const r=el.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  function _updateSelCells(){ S.sel.clear(); const {startCell:a,endCell:b}=S.drag; if(!a||!b) return; const r1=Math.min(a.r,b.r),r2=Math.max(a.r,b.r),c1=Math.min(a.c,b.c),c2=Math.max(a.c,b.c); for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) S.sel.add(r+','+c); document.querySelectorAll('#g-grid .pcell').forEach(el=>el.classList.toggle('sel', S.sel.has(el.dataset.r+','+el.dataset.c))); }
+  function _showSelRect(a,b){ const rect=document.getElementById('g-sel-rect'); const x=Math.min(a.x,b.x), y=Math.min(a.y,b.y); rect.style.cssText=`display:block;left:${x}px;top:${y}px;width:${Math.abs(a.x-b.x)}px;height:${Math.abs(a.y-b.y)}px`; }
+  function _hideSelRect(){ document.getElementById('g-sel-rect').style.display='none'; }
+  function _attachDragEvents(){ const wrap=document.getElementById('g-wrap'); wrap.onmousedown=e=>{ const cell=e.target.closest('.pcell'); if(!cell) return; e.preventDefault(); S.drag={active:true,startCell:{r:+cell.dataset.r,c:+cell.dataset.c},endCell:{r:+cell.dataset.r,c:+cell.dataset.c},startXY:_relXY(e,wrap),curXY:_relXY(e,wrap)}; S.sel.clear(); _updateSelCells(); _showSelRect(S.drag.startXY,S.drag.startXY); }; wrap.onmousemove=e=>{ if(S.drag.active){ const cell=e.target.closest('.pcell'); if(cell) S.drag.endCell={r:+cell.dataset.r,c:+cell.dataset.c}; S.drag.curXY=_relXY(e,wrap); _updateSelCells(); _showSelRect(S.drag.startXY,S.drag.curXY); } else { const cell=e.target.closest('.pcell'); if(cell) _showTooltipForCell(e,+cell.dataset.r,+cell.dataset.c); else App.hideTooltip(); } }; wrap.onmouseup=e=>{ if(!S.drag.active) return; S.drag.active=false; _hideSelRect(); if(S.sel.size>0) _openConditionPopup(e); }; wrap.onmouseleave=()=>{ App.hideTooltip(); if(S.drag.active){ S.drag.active=false; _hideSelRect(); if(S.sel.size>0) _openConditionPopup(null); } }; }
+  function clearSel(){ S.sel.clear(); document.querySelectorAll('#g-grid .pcell.sel').forEach(el=>el.classList.remove('sel')); }
+  function _openConditionPopup(e){ const items=S.pkeys.map(p=>({key:p,label:PARAMS[p].label,icon:PARAMS[p].icon,values:S.pdefs[p]})); App.openPopup(items, `${S.sel.size} plot${S.sel.size>1?'s':''} selected`, state=>{ for(const key of S.sel){ const [r,c]=key.split(',').map(Number); for(const p of S.pkeys) if(state[p]!=='__nc__') S.cells[r][c].params[p]=state[p]; } clearSel(); _render(); }, e); }
+  function _showTooltipForCell(e,r,c){ const cell=S.cells[r][c], uninit=S.pkeys.some(p=>cell.params[p]===null); if(uninit){ App.showTooltip(`<div class="htip-title">Plot (${r+1},${c+1}): not yet set</div>`, e); return; } if(cell.history.length===0){ const rows=S.pkeys.map(p=>`<div style="font-size:11px;color:var(--ink-soft)">${PARAMS[p].label}: <strong style="color:var(--ink)">${cell.params[p]}</strong></div>`).join(''); App.showTooltip(`<div class="htip-title">Plot (${r+1},${c+1}): ready, not yet run</div>${rows}`, e); return; } let html=`<div class="htip-title">Plot (${r+1},${c+1}): height ${Math.round(cell.height)}</div><table><thead><tr><th>Day</th>`; for(const p of S.pkeys) html+=`<th>${PARAMS[p].short}</th>`; html+='<th>Score</th><th>Ht</th></tr></thead><tbody>'; for(const h of cell.history){ const sc=h.score>=70?'score-hi':h.score>=45?'score-md':'score-lo'; html+=`<tr><td class="val">${h.day}</td>`; for(const p of S.pkeys) html+=`<td class="val">${h.params[p]}</td>`; html+=`<td class="${sc}">${h.score}</td><td class="val">${Math.round(h.height)}</td></tr>`; } html+='</tbody></table>'; App.showTooltip(html,e); }
+  function runDay(){ const scores=[]; let bestScore=0,bestCombo=null; for(let r=0;r<S.N;r++){ for(let c=0;c<S.N;c++){ const cell=S.cells[r][c], score=_score(cell.params), delta=_growthDelta(score, cell.height); cell.height=Math.max(0, Math.min(100, cell.height + delta)); cell.history.push({day:S.day, params:{...cell.params}, score, height:cell.height}); scores.push(score); if(score>bestScore){bestScore=score; bestCombo={...cell.params};} if(cell.height>S.topHeight) S.topHeight=cell.height; } } const msg=_buildDayMsg(scores,bestScore,bestCombo); S.log.push({day:S.day,msg}); _showNotif(msg,false); S.day++; if(S.topHeight>=S.goal.height){ _render(); setTimeout(_showWin,200); return; } if(S.day>S.goal.days){ _render(); setTimeout(_showLoss,200); return; } _render(); }
+  function _buildDayMsg(scores,best,bestCombo){ const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length), min=Math.min(...scores), spread=best-min; let s=`Day ${S.day} complete. Best score: <span class="hl">${best}</span>. Garden average: ${avg}.`; s += spread>25? ' Large spread: some conditions are clearly stronger here.' : ' Narrow spread: this seed has some forgiving variables.'; if(bestCombo){ const desc=S.pkeys.map(p=>`${PARAMS[p].label.toLowerCase()} ${bestCombo[p]}`).join(' · '); s += ` Best combo: <span class="hl">${desc}</span>.`; } return s; }
+  function _showNotif(html,isWarn){ const el=document.getElementById('g-notif'); el.className='notif vis'+(isWarn?' warn':' good'); el.innerHTML=html; }
+  function _renderSidebar(){ const pl=document.getElementById('g-param-legend'); pl.innerHTML=''; for(const p of S.pkeys){ const item=document.createElement('div'); item.className='pleg-item'; const dot=document.createElement('div'); dot.className='pleg-dot'; dot.style.background=PARAMS[p].color; const lbl=document.createElement('span'); lbl.textContent=`${PARAMS[p].label}: ${S.pdefs[p].join(', ')}`; item.appendChild(dot); item.appendChild(lbl); pl.appendChild(item);} const hl=document.getElementById('g-log'); hl.innerHTML=''; if(!S.log.length){ hl.innerHTML='<div style="font-size:11px;color:var(--ink-pale)">No days run yet.</div>'; } else { for(const entry of S.log.slice().reverse().slice(0,6)){ const d=document.createElement('div'); d.className='hist-entry'; d.innerHTML=`<div class="hist-day">Day ${entry.day}</div><div class="hist-msg">${entry.msg}</div>`; hl.appendChild(d);} } }
+  function _showWin(){ App.showScreen('garden-success'); const daysUsed=S.day-1, total=S.pkeys.reduce((a,p)=>a*S.pdefs[p].length,1); document.getElementById('g-win-sub').textContent=`Your best plant reached height ${Math.round(S.topHeight)}; the goal was ${S.goal.height}. You used ${daysUsed} of ${S.goal.days} days.`; document.getElementById('g-win-stats').innerHTML=`<div class="stat-box"><div class="stat-v">${daysUsed}</div><div class="stat-l">Days used</div></div><div class="stat-box"><div class="stat-v">${Math.round(S.topHeight)}</div><div class="stat-l">Best height</div></div><div class="stat-box"><div class="stat-v">${total}</div><div class="stat-l">Possible combos</div></div>`; document.getElementById('g-win-reflect').innerHTML=`<strong>Looking back</strong>There were ${total} possible combinations. You reached the target in time.<br><br>This seed assigned different response shapes to different variables. Some conditions had a clear optimum; others made less difference. Good experimental design is partly about discovering <em>how sensitive</em> the system is to each variable, along with <em>which value</em> works best.`; }
+  function _showLoss(){ App.showScreen('garden-failure'); document.getElementById('g-fail-sub').textContent=`Your best plant reached height ${Math.round(S.topHeight)}. You needed ${S.goal.height} within ${S.goal.days} days.`; document.getElementById('g-fail-reflect').innerHTML=`<strong>Looking back</strong>${_generateHint()}`; }
+  function _generateHint(){ const allScores=S.cells.flat().filter(c=>c.history.length>0).map(c=>c.history[c.history.length-1].score); if(!allScores.length) return 'Try assigning different conditions to different regions so you can compare them side by side.'; const spread=Math.max(...allScores)-Math.min(...allScores); if(spread<15) return 'This garden looks fairly flat. Try changing one condition at a time across larger regions so small differences become easier to notice.'; if(S.topHeight>S.goal.height*0.82) return `You were close (best height: ${Math.round(S.topHeight)}). Next time, commit to your strongest combination earlier and let the compounding growth work for you.`; return 'Try creating clearer side-by-side tests. When two regions differ in exactly one condition, it becomes much easier to see which variable is doing the work.'; }
+  return { goSetup, start, retry, randSeed, runDay, clearSel };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   OUTBREAK MODEL (no DOM). Town, exposures, infection dynamics.
+   Every random draw is seeded, and per-resident-per-day draws are
+   fixed in advance, so the same seed gives the same outbreak until
+   the player intervenes, and an intervention only changes what it
+   should change.
+   ═══════════════════════════════════════════════════════════ */
+const OBModel = (() => {
+  const W = 880, H = 470;
+
+  const SITES = {
+    hillWell:  { name:'Hill Well',   icon:'💧', kind:'well', color:'#3f78b0' },
+    riverWell: { name:'River Well',  icon:'💧', kind:'well', color:'#23948a' },
+    bakery:    { name:'Bakery',      icon:'🥖', kind:'food', color:'#c48a1c' },
+    market:    { name:'Fish Market', icon:'🐟', kind:'food', color:'#b04a6a' },
+    mill:      { name:'Mill',        icon:'⚙️', kind:'work', color:'#5d6d86' },
+    marsh:     { name:'Marsh',       icon:'🌫', kind:'area', color:'#6f8f5f' },
+  };
+
+  const CANDIDATES = {
+    hillWell:  { name:'Hill Well',       icon:'💧', claim:'Water drawn from the Hill Well makes people ill.',        row:'Drinks from the Hill Well' },
+    riverWell: { name:'River Well',      icon:'💧', claim:'Water drawn from the River Well makes people ill.',       row:'Drinks from the River Well' },
+    bakery:    { name:'Bakery',          icon:'🥖', claim:'Bread from the Bakery makes people ill.',                 row:'Buys from the Bakery' },
+    market:    { name:'Fish Market',     icon:'🐟', claim:'Fish from the Fish Market makes people ill.',             row:'Buys from the Fish Market' },
+    mill:      { name:'Mill',            icon:'⚙️', claim:'Something at the Mill makes its workers ill.',            row:'Works at the Mill' },
+    marsh:     { name:'Marsh air',       icon:'🌫', claim:'Bad air from the marsh makes people who live near it ill.', row:'Lives in the marsh zone' },
+    contagion: { name:'Person to person',icon:'🤝', color:'#8a6a9a', claim:'The illness passes between people who live or work together.', row:'Shares a home with another case' },
+  };
+
+  const CONFIGS = {
+    easy:   { cands:['hillWell','riverWell','bakery','market'],
+              households:22, discord:0.25, leak:0.00, bg:0.000, incub:[2,2], days:12, hours:15, tests:false },
+    medium: { cands:['hillWell','riverWell','bakery','market','mill'],
+              households:24, discord:0.15, leak:0.04, bg:0.005, incub:[2,3], days:12, hours:15, tests:true },
+    hard:   { cands:['hillWell','riverWell','bakery','market','mill','marsh','contagion'],
+              households:26, discord:0.10, leak:0.06, bg:0.006, incub:[2,3], days:12, hours:13, tests:true },
+  };
+
+  const BETA = { site:0.075, mill:0.08, marsh:0.10 };
+  const CONTAGION = { house:0.11, work:0.018, town:0.0022, index:2 };
+  const MAX_DAYS = 40;
+  const START_CASES = 4;
+
+  const FIRST = ['Ada','Bram','Cora','Dell','Eben','Faye','Gus','Hester','Ivo','Jem','Kit','Lark','Mabel','Ned','Odile','Pip','Quill','Rosa','Silas','Tess','Ulla','Vane','Wren','Yara','Zeb','Alma','Bea','Cass','Dorian','Elsie','Finn','Greta','Hal','Ines','Jory','Kitty','Levi','Mina','Nell','Otto','Perrin','Rhea','Sol','Tobin','Una','Vera','Walt','Xan','Yves','Zora','Abel','Bryn','Clem','Dot','Ezra','Flora','Gideon','Hattie','Ira','June','Kester','Lottie','Moss','Nora','Orrin','Petra','Rufus','Sadie','Thea','Uriah','Viola','Wim','Agnes','Basil','Cyril','Daisy','Edmund','Fern','Gil','Holly','Isa','Jasper','Kay','Linus','Maud','Nils','Opal','Pearl'];
+  const FAMILY = ['Ashby','Barrow','Croft','Dunmore','Ellery','Fenwick','Garrow','Hale','Inchley','Jarrow','Kettle','Lowther','Marsh','Nettles','Orme','Pickering','Quarry','Rook','Stroud','Thorne','Upton','Vance','Wilder','Yarrow','Alder','Briggs','Coombe','Dale','Elm','Foss'];
+
+  function mulberry32(seed) { return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function seedFromStr(s) { let h=0; for(let i=0;i<s.length;i++) h=Math.imul(31,h)+s.charCodeAt(i)|0; return h>>>0; }
+  const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+  /* ── Town generation ─────────────────────────────────────── */
+  function _layout(rng) {
+    const j = (v,a) => v + (rng()-0.5)*2*a;
+    // Canonical layout: "hill side" on the left, "river side" on the right.
+    const sites = {
+      bakery:    { x:j(250,30), y:j(78,12) },
+      hillWell:  { x:j(215,30), y:j(262,30) },
+      market:    { x:j(630,30), y:j(78,12) },
+      riverWell: { x:j(665,30), y:j(262,30) },
+      mill:      { x:j(440,40), y:j(432,6) },
+      marsh:     { x:j(40,12),  y:j(330,24), r:j(232,10) },
+    };
+    const flipX = rng() < 0.5, flipY = rng() < 0.5;
+    for (const k in sites) {
+      if (flipX) sites[k].x = W - sites[k].x;
+      if (flipY && k!=='mill') sites[k].y = H - sites[k].y;
+      if (flipY && k==='mill') sites[k].y = H - sites[k].y;
+    }
+    return { sites, flipX, flipY };
+  }
+
+  function _placeHouses(rng, n, sites, flipX) {
+    const houses = [];
+    const avoid = Object.entries(sites).filter(([k])=>k!=='marsh').map(([,s])=>s);
+    const half = Math.floor(n/2), mid = 2;
+    const zones = [];
+    for (let i=0;i<half-1;i++) zones.push('L');
+    for (let i=0;i<n-half-1;i++) zones.push('R');
+    for (let i=0;i<mid;i++) zones.push('M');
+    let guard = 0;
+    for (const z of zones) {
+      let placed = false;
+      while (!placed && guard++ < 20000) {
+        let x;
+        if (z==='L') x = 55 + rng()*335; else if (z==='R') x = 490 + rng()*335; else x = 395 + rng()*90;
+        const y = 50 + rng()*(H-110);
+        const p = {x,y};
+        if (houses.some(h=>dist(h,p)<54)) continue;
+        if (avoid.some(s=>dist(s,p)<50)) continue;
+        houses.push({x,y,zone:z}); placed = true;
+      }
+    }
+    return houses;
+  }
+
+  function _nearest(p, a, b, sites) { return dist(p,sites[a]) <= dist(p,sites[b]) ? a : b; }
+
+  function _buildTown(cfg, rng) {
+    const { sites, flipX, flipY } = _layout(rng);
+    const hs = _placeHouses(rng, cfg.households, sites, flipX);
+    const hasMill = cfg.cands.includes('mill') || cfg.cands.includes('contagion');
+    const households = [], residents = [];
+    const famPool = FAMILY.slice(); for (let i=famPool.length-1;i>0;i--){ const k=Math.floor(rng()*(i+1)); [famPool[i],famPool[k]]=[famPool[k],famPool[i]]; }
+    const firstPool = FIRST.slice(); for (let i=firstPool.length-1;i>0;i--){ const k=Math.floor(rng()*(i+1)); [firstPool[i],firstPool[k]]=[firstPool[k],firstPool[i]]; }
+    let fi = 0;
+    hs.forEach((h,hi) => {
+      const nearWell = _nearest(h,'hillWell','riverWell',sites);
+      const nearFood = _nearest(h,'bakery','market',sites);
+      const well = rng() < cfg.discord ? (nearWell==='hillWell'?'riverWell':'hillWell') : nearWell;
+      const food = rng() < cfg.discord ? (nearFood==='bakery'?'market':'bakery') : nearFood;
+      const r = rng();
+      const size = r < 0.28 ? 2 : r < 0.74 ? 3 : 4;
+      const inMarsh = dist(h, sites.marsh) < sites.marsh.r;
+      const hh = { id:hi, x:h.x, y:h.y, family:famPool[hi % famPool.length], well, food, inMarsh, members:[] };
+      for (let m=0;m<size;m++) {
+        const id = residents.length;
+        const worker = hasMill && rng() < 0.42;
+        residents.push({ id, house:hi, name:firstPool[fi++ % firstPool.length], worker });
+        hh.members.push(id);
+      }
+      households.push(hh);
+    });
+    return { sites, flipX, flipY, households, residents };
+  }
+
+  /* ── Exposure helpers ─────────────────────────────────────── */
+  function exposures(world, rid) {
+    const r = world.residents[rid], h = world.households[r.house];
+    return { hillWell: h.well==='hillWell', riverWell: h.well==='riverWell', bakery: h.food==='bakery', market: h.food==='market', mill: !!r.worker, marsh: h.inMarsh };
+  }
+
+  /* ── Simulation ───────────────────────────────────────────── */
+  // Per-resident fixed draws (common random numbers)
+  function _draws(world, cfg, rng) {
+    const N = world.residents.length;
+    const D = [];
+    for (let i=0;i<N;i++) {
+      const uInf = new Float64Array(MAX_DAYS), uBg = new Float64Array(MAX_DAYS), uLeakW = new Float64Array(MAX_DAYS), uLeakF = new Float64Array(MAX_DAYS);
+      for (let d=0; d<MAX_DAYS; d++) { uInf[d]=rng(); uBg[d]=rng(); uLeakW[d]=rng(); uLeakF[d]=rng(); }
+      const incub = cfg.incub[0] + Math.floor(rng()*(cfg.incub[1]-cfg.incub[0]+1));
+      const ill = 3 + Math.floor(rng()*2);
+      const bgLen = 2 + Math.floor(rng()*2);
+      D.push({ uInf, uBg, uLeakW, uLeakF, incub, ill, bgLen });
+    }
+    return D;
+  }
+
+  function freshSim(world) {
+    return world.residents.map(()=>({ state:'S', infDay:null, onset:null, recover:null, bgOnset:null, bgEnd:null }));
+  }
+
+  // closures: { siteKey: dayClosed }  (closed from that day on)
+  function _open(closures, key, d) { return !(key in closures) || d < closures[key]; }
+
+  function _infectProb(world, cfg, truth, sim, D, i, d, closures) {
+    const r = world.residents[i], h = world.households[r.house];
+    if (truth==='contagion') {
+      let nH=0, nW=0, nT=0;
+      for (const j of h.members) if (j!==i && _infectious(sim[j], d)) nH++;
+      const millOpen = _open(closures,'mill',d);
+      for (let j=0;j<sim.length;j++) {
+        if (j===i) continue;
+        const sj = sim[j];
+        if (!_infectious(sj,d)) continue;
+        nT++;
+        if (millOpen && r.worker && world.residents[j].worker && !_visiblyIll(sj,d)) nW++;
+      }
+      const atWork = millOpen && r.worker && !_visiblyIll(sim[i],d);
+      return 1 - Math.pow(1-CONTAGION.house,nH) * Math.pow(1-CONTAGION.work, atWork?nW:0) * Math.pow(1-CONTAGION.town,nT);
+    }
+    if (truth==='marsh') return h.inMarsh ? BETA.marsh : 0;
+    if (truth==='mill') return (r.worker && _open(closures,'mill',d) && !_visiblyIll(sim[i],d)) ? BETA.mill : 0;
+    // site sources (wells, food)
+    const kind = SITES[truth].kind;
+    const usual = kind==='well' ? h.well : h.food;
+    let exposed = usual===truth;
+    if (!exposed && cfg.leak>0) {
+      const u = kind==='well' ? D[i].uLeakW[d] : D[i].uLeakF[d];
+      exposed = u < cfg.leak;
+    }
+    if (!exposed) return 0;
+    if (!_open(closures,truth,d)) return 0;
+    return BETA.site;
+  }
+
+  // infectious from one day before onset through recovery (contagion only)
+  function _infectious(s, d) { return s.infDay!==null && d >= s.onset-1 && d < s.recover; }
+  function _visiblyIll(s, d) { return (s.onset!==null && d>=s.onset && d<s.recover) || (s.bgOnset!==null && d>=s.bgOnset && d<s.bgEnd); }
+
+  // Advance the simulation through day d (exposures on day d, states as of end of day d).
+  function stepDay(world, cfg, truth, sim, D, d, closures) {
+    const N = sim.length;
+    const newInf = [];
+    for (let i=0;i<N;i++) {
+      const s = sim[i];
+      if (s.state!=='S') continue;
+      const p = _infectProb(world,cfg,truth,sim,D,i,d,closures);
+      if (p>0 && D[i].uInf[d] < p) newInf.push(i);
+    }
+    for (const i of newInf) {
+      const s = sim[i];
+      s.state='E'; s.infDay=d; s.onset=d+D[i].incub; s.recover=s.onset+D[i].ill;
+    }
+    for (let i=0;i<N;i++) {
+      const s = sim[i];
+      if (s.state==='E' && d+1>=s.onset) s.state='I';
+      if (s.state==='I' && d+1>=s.recover) s.state='R';
+      // background illness (something else going around)
+      if (cfg.bg>0 && !(s.bgOnset!==null && d+1<s.bgEnd) && D[i].uBg[d] < cfg.bg) {
+        s.bgOnset = d+1; s.bgEnd = d+1+D[i].bgLen;
+      }
+    }
+  }
+
+  function seedIndex(world, truth, sim, D, rng) {
+    if (truth!=='contagion') return;
+    const N = sim.length; const used = new Set();
+    let k = 0, guard = 0;
+    while (k < CONTAGION.index && guard++<500) {
+      const i = Math.floor(rng()*N); const hh = world.residents[i].house;
+      if (used.has(hh)) continue; used.add(hh);
+      const s = sim[i]; s.state='E'; s.infDay=-1; s.onset=-1+D[i].incub; s.recover=s.onset+D[i].ill; k++;
+    }
+  }
+
+  // Visible status of resident i at the start of day d (after day d-1 resolved)
+  function visible(sim, i, d) {
+    const s = sim[i];
+    const out = (s.onset!==null && d>=s.onset && d<s.recover);
+    const bg = (s.bgOnset!==null && d>=s.bgOnset && d<s.bgEnd);
+    if (out || bg) return 'ill';
+    if ((s.recover!==null && d>=s.recover) || (s.bgEnd!==null && d>=s.bgEnd)) return 'recovered';
+    return 'well';
+  }
+
+  // All visible onset events up to day d: {i, day, kind:'outbreak'|'other'}
+  function onsets(sim, d) {
+    const ev = [];
+    sim.forEach((s,i) => {
+      if (s.onset!==null && s.onset<=d) ev.push({ i, day:s.onset, kind:'outbreak' });
+      if (s.bgOnset!==null && s.bgOnset<=d) {
+        // only counts as a visible new illness if not already ill with the outbreak that day
+        const already = s.onset!==null && s.bgOnset>=s.onset && s.bgOnset<s.recover;
+        if (!already) ev.push({ i, day:s.bgOnset, kind:'other' });
+      }
+    });
+    return ev;
+  }
+
+  /* ── World creation with playability checks ──────────────── */
+  function create(diff, seedStr) {
+    const cfg = CONFIGS[diff];
+    const truthRng = mulberry32(seedFromStr('truth:' + diff + ':' + seedStr));
+    const truth = cfg.cands[Math.floor(truthRng()*cfg.cands.length)];
+    for (let attempt=0; attempt<200; attempt++) {
+      const rng = mulberry32(seedFromStr(seedStr + (attempt? '#'+attempt : '')));
+      const world = _buildTown(cfg, rng);
+      const D = _draws(world, cfg, rng);
+      const sim = freshSim(world);
+      seedIndex(world, truth, sim, D, rng);
+      const _index = sim.map((s,i)=> s.state!=='S' ? [i,{...s}] : null).filter(Boolean);
+      // run silently until the outbreak is noticed
+      let d = 0, startDay = null;
+      for (; d < 10; d++) {
+        stepDay(world,cfg,truth,sim,D,d,{});
+        const seen = onsets(sim,d+1).filter(e=>e.kind==='outbreak').length;
+        if (seen >= START_CASES) { startDay = d+1; break; }
+      }
+      if (startDay===null || startDay<2) continue;
+      if (!_checks({ world, cfg, truth, D, _index }, startDay)) continue;
+      return { diff, seedStr, cfg, world, truth, D, sim, _index, startDay, endDay:startDay+cfg.days-1, attempt };
+    }
+    throw new Error('Could not generate a playable outbreak');
+  }
+
+  function _checks(G, startDay) {
+    const { world, cfg } = G;
+    // every confounded pair needs households that break the pairing
+    const H = world.households;
+    const cnt = (f) => H.filter(f).length;
+    if (cnt(h=>h.well==='hillWell'&&h.food!=='bakery')<1 || cnt(h=>h.well!=='hillWell'&&h.food==='bakery')<1) return false;
+    if (cnt(h=>h.well==='riverWell'&&h.food!=='market')<1 || cnt(h=>h.well!=='riverWell'&&h.food==='market')<1) return false;
+    // ...but the pairing should still be there: the confound is the point of the exercise
+    if (_phi(world,'hillWell','bakery') < 0.15 || _phi(world,'riverWell','market') < 0.15) return false;
+    if (cfg.cands.includes('marsh')) {
+      if (cnt(h=>h.inMarsh)<4) return false;
+      if (cnt(h=>!h.inMarsh && h.well===_marshSideWell(world))<2) return false;
+    }
+    // full run without interventions should give a sizable but not total outbreak
+    const total = runCounterfactual(G, startDay+cfg.days-1, {}).cases;
+    if (G.truth==='marsh' || cfg.cands.includes('marsh')) { /* zone size already checked */ }
+    const N = world.residents.length;
+    return total >= 12 && total <= Math.round(N*0.7);
+  }
+  function _phi(world, k1, k2) {
+    let n11=0, n10=0, n01=0, n00=0;
+    for (const r of world.residents) { const e = exposures(world, r.id), x = e[k1], y = e[k2]; if (x&&y) n11++; else if (x) n10++; else if (y) n01++; else n00++; }
+    const d = Math.sqrt((n11+n10)*(n01+n00)*(n11+n01)*(n10+n00));
+    return d ? (n11*n00 - n10*n01)/d : 0;
+  }
+  function _marshSideWell(world) { return dist(world.sites.marsh, world.sites.hillWell) < dist(world.sites.marsh, world.sites.riverWell) ? 'hillWell' : 'riverWell'; }
+
+  // Re-run the outbreak from day 0 with a closure schedule; returns the state at the start of `day`.
+  function runCounterfactual(G, day, closures) {
+    const sim = freshSim(G.world);
+    for (const [i,s] of G._index) Object.assign(sim[i], { ...s });
+    for (let d=0; d<day; d++) stepDay(G.world,G.cfg,G.truth,sim,G.D,d,closures);
+    const cases = sim.filter(s=>s.onset!==null && s.onset<=day).length;
+    return { sim, cases };
+  }
+
+  return { W, H, SITES, CANDIDATES, CONFIGS, MAX_DAYS, create, stepDay, visible, onsets, exposures, runCounterfactual, freshSim, mulberry32, seedFromStr, _infectious, _visiblyIll };
+})();
+
+
+/* ═══════════════════════════════════════════════════════════
+   OUTBREAK (UI)
+   Theory selection when the free evidence is confounded:
+   watch (free), ask (visits, tests), intervene (closures),
+   then report credences as 10 chips (Brier-scored).
+   ═══════════════════════════════════════════════════════════ */
+const Outbreak = (() => {
+  const M = OBModel, W = M.W, H = M.H;
+  const COST = { visit:1, test:1, close:3 };
+  const DOT = { well:'#93ad84', ill:'#d4553a', recovered:'#8796bf', other:'#c9a26b', carrier:'#e3b23c' };
+  let S = null, _raf = null, _hover = null, _bound = false;
+
+  /* ── Navigation ─────────────────────────────────────────── */
+  function goSetup() {
+    stop();
+    App.setBreadcrumb('Outbreak'); App.clearModeSettings(); App.showScreen('ob-setup'); randSeed();
+    document.querySelectorAll('#ob-diff-grid .diff-btn').forEach(b=>b.classList.toggle('sel', b.dataset.diff==='easy'));
+  }
+  function randSeed() { document.getElementById('ob-seed-input').value = App.randSeedStr(); }
+  function start() {
+    const diff = document.querySelector('#ob-diff-grid .diff-btn.sel').dataset.diff;
+    let seed = document.getElementById('ob-seed-input').value.trim();
+    if (!seed) { seed = App.randSeedStr(); document.getElementById('ob-seed-input').value = seed; }
+    _begin(diff, seed);
+  }
+  function replay() { if (S) _begin(S.diff, S.seedStr); }
+  function stop() { if (_raf) { cancelAnimationFrame(_raf); _raf = null; } }
+
+  function _begin(diff, seed) {
+    stop();
+    App.setSeed(seed);
+    const G = M.create(diff, seed);
+    const cands = G.cfg.cands;
+    S = {
+      diff, seedStr:seed, G, cfg:G.cfg, world:G.world, sim:G.sim,
+      day:G.startDay, startDay:G.startDay, endDay:G.endDay, hoursLeft:G.cfg.hours,
+      visited:new Map(), tests:new Map(), closures:{}, chips:Object.fromEntries(cands.map(k=>[k,0])),
+      selected:null, rowSel:null, cmp:[cands[0], cands[2] || cands[1]],
+      log:[], pulses:[], visits:[], closeLog:[], testsRun:0,
+    };
+    const seen = _everIllCount();
+    _log(`The investigation opens. ${seen} residents have fallen ill so far. The council meets on day ${S.endDay}.`);
+    App.showScreen('ob-game');
+    _bindCanvas();
+    _renderLegend();
+    _renderAll();
+    _notif(`Day ${S.day}. ${seen} residents are or have been ill. Click a house or a site on the map to start investigating, or move to the next day to watch the outbreak develop.`, '');
+  }
+
+  /* ── What the player knows ──────────────────────────────── */
+  const _tests = i => S.tests.get(i) || [];
+  function _lastOnset(i) {
+    const s = S.sim[i]; let o = -1;
+    if (s.onset!==null && s.onset<=S.day) o = Math.max(o, s.onset);
+    if (s.bgOnset!==null && s.bgOnset<=S.day) o = Math.max(o, s.bgOnset);
+    return o;
+  }
+  const _everIll = i => _lastOnset(i) >= 0;
+  function _ruledOut(i) {
+    const lo = _lastOnset(i), ts = _tests(i);
+    if (lo < 0 || ts.some(t=>t.pos)) return false;
+    const after = ts.filter(t=>t.day>=lo);
+    return after.length>0;
+  }
+  function _isCase(i) {
+    if (_tests(i).some(t=>t.pos)) return true;
+    return _everIll(i) && !_ruledOut(i);
+  }
+  function _dotState(i) {
+    const v = M.visible(S.sim, i, S.day);
+    if (v==='ill') return _ruledOut(i) ? 'other' : 'ill';
+    if (v==='recovered') return _ruledOut(i) ? 'other' : 'recovered';
+    if (_tests(i).some(t=>t.pos)) return 'carrier';
+    return 'well';
+  }
+  function _known(i, key) {
+    if (key==='marsh' || key==='contagion') return true;
+    return S.visited.has(S.world.residents[i].house);
+  }
+  function _exposed(i, key) {
+    if (key==='contagion') {
+      const hh = S.world.households[S.world.residents[i].house];
+      return hh.members.some(j=>j!==i && _isCase(j));
+    }
+    return M.exposures(S.world, i)[key];
+  }
+  const _everIllCount = () => S.world.residents.filter(r=>_everIll(r.id)).length;
+  const _illNow = () => S.world.residents.filter(r=>M.visible(S.sim,r.id,S.day)==='ill').length;
+
+  function _row(key) {
+    let a=0, an=0, b=0, bn=0;
+    for (const r of S.world.residents) {
+      if (!_known(r.id,key)) continue;
+      const c = _isCase(r.id);
+      if (_exposed(r.id,key)) { an++; if (c) a++; } else { bn++; if (c) b++; }
+    }
+    return { a, an, b, bn };
+  }
+  function _cmpCells(k1, k2) {
+    const cell = () => ({ ill:0, n:0 });
+    const C = { both:cell(), only1:cell(), only2:cell(), neither:cell() };
+    for (const r of S.world.residents) {
+      if (!_known(r.id,k1) || !_known(r.id,k2)) continue;
+      const e1 = _exposed(r.id,k1), e2 = _exposed(r.id,k2);
+      const c = e1&&e2 ? C.both : e1 ? C.only1 : e2 ? C.only2 : C.neither;
+      c.n++; if (_isCase(r.id)) c.ill++;
+    }
+    return C;
+  }
+
+  /* ── Actions ─────────────────────────────────────────────── */
+  function _spend(h) {
+    if (S.day > S.endDay) return false;
+    if (S.hoursLeft < h) { _notif(`That needs ${h} hour${h>1?'s':''} and you have ${S.hoursLeft} left.`, 'warn'); return false; }
+    S.hoursLeft -= h; return true;
+  }
+  function visit(hid) {
+    if (S.visited.has(hid) || !_spend(COST.visit)) return;
+    const hh = S.world.households[hid];
+    S.visited.set(hid, S.day);
+    S.visits.push({ hid, day:S.day, anyIll: hh.members.some(j=>_everIll(j)) });
+    const workers = hh.members.filter(j=>S.world.residents[j].worker).map(j=>S.world.residents[j].name);
+    const hasMill = S.cfg.cands.includes('mill') || S.cfg.cands.includes('contagion');
+    let txt = `Visited the ${hh.family} household. Water: ${M.SITES[hh.well].name}. Food: ${M.SITES[hh.food].name}.`;
+    if (hasMill) txt += workers.length ? ` At the Mill: ${_list(workers)}.` : ' Nobody works at the Mill.';
+    _log(txt);
+    _notif(txt, 'good');
+    _renderAll();
+  }
+  function test(i) {
+    if (!S.cfg.tests || !_spend(COST.test)) return;
+    const s = S.sim[i], pos = s.infDay!==null && s.infDay < S.day;
+    if (!S.tests.has(i)) S.tests.set(i, []);
+    S.tests.get(i).push({ day:S.day, pos });
+    S.testsRun++;
+    const r = S.world.residents[i], ill = M.visible(S.sim,i,S.day)==='ill';
+    const msg = pos
+      ? (ill ? `${r.name} tested positive: this is the outbreak illness.` : _everIll(i) ? `${r.name} tested positive: they had the outbreak illness.` : `${r.name} tested positive: infected, with no symptoms yet.`)
+      : (_everIll(i) ? `${r.name} tested negative: their illness was something else.` : `${r.name} tested negative: not infected so far.`);
+    _log(msg);
+    _notif(msg, pos ? 'warn' : 'good');
+    _renderAll();
+  }
+  function close(key) {
+    if (key in S.closures || key==='marsh' || !_spend(COST.close)) return;
+    S.closures[key] = S.day;
+    S.closeLog.push({ key, day:S.day });
+    const msg = key==='mill' ? 'Closed the Mill. Workers stay home from today.' : `Closed the ${M.SITES[key].name}. From today nobody is exposed to it, and the town brings in supplies from elsewhere.`;
+    _log(msg);
+    _notif(`${msg} Anyone already infected will still fall ill over the next few days.`, '');
+    _renderAll();
+  }
+  function nextDay() {
+    if (S.day >= S.endDay) return;
+    M.stepDay(S.world, S.cfg, S.G.truth, S.sim, S.G.D, S.day, S.closures);
+    S.day++;
+    const ev = M.onsets(S.sim, S.day).filter(e=>e.day===S.day);
+    const now = performance.now();
+    const houses = [...new Set(ev.map(e=>S.world.residents[e.i].house))];
+    houses.forEach((h,k)=>S.pulses.push({ hid:h, t0:now + k*120 }));
+    const n = ev.length;
+    const names = ev.map(e=>S.world.residents[e.i].name);
+    _log(n ? `${n} new case${n>1?'s':''}: ${_list(names)}.` : 'No new cases.');
+    if (S.day === S.endDay) _notif(`Day ${S.day}. ${n ? `${n} new case${n>1?'s':''}. ` : 'No new cases. '}The council meets today. Place your 10 chips and report.`, 'warn');
+    else _notif(`Day ${S.day}. ${n ? `${n} new case${n>1?'s':''} today.` : 'No new cases today.'} ${S.endDay - S.day} day${S.endDay-S.day>1?'s':''} until the council meets.`, n ? '' : 'good');
+    _renderAll();
+    _kick();
+  }
+
+  /* ── Chips and report ───────────────────────────────────── */
+  const _chipTotal = () => Object.values(S.chips).reduce((a,b)=>a+b,0);
+  function chip(key, d) {
+    const t = _chipTotal();
+    if (d>0 && t>=10) return;
+    if (d<0 && S.chips[key]<=0) return;
+    S.chips[key] += d;
+    _renderCands();
+  }
+  function openReport() {
+    if (_chipTotal() !== 10) { _notif(`Place all 10 chips before reporting (${10-_chipTotal()} left).`, 'warn'); return; }
+    const parts = S.cfg.cands.filter(k=>S.chips[k]>0).sort((a,b)=>S.chips[b]-S.chips[a])
+      .map(k=>`<div class="ob-rep-line"><span>${_sw(k)}${M.CANDIDATES[k].name}</span><span class="ob-chipbar">${'<i></i>'.repeat(S.chips[k])}</span><strong>${S.chips[k]}</strong></div>`).join('');
+    document.getElementById('ob-report-summary').innerHTML =
+      `<p>Day ${S.day} of ${S.endDay}. Once you report, the investigation ends.</p>${parts}`;
+    App.showModal('ob-report-modal');
+  }
+  function submitReport() { App.closeModal('ob-report-modal'); stop(); _showResult(); }
+
+  /* ── Rendering: panels ───────────────────────────────────── */
+  function _renderAll() { _renderStatus(); _renderSelected(); _renderCands(); _renderEvidence(); _renderCurve(); _renderLog(); _draw(); }
+
+  function _renderStatus() {
+    document.getElementById('ob-day').textContent = S.day;
+    document.getElementById('ob-day-of').textContent = `of ${S.endDay}`;
+    document.getElementById('ob-ill').textContent = _illNow();
+    document.getElementById('ob-ever').textContent = _everIllCount();
+    document.getElementById('ob-hours').textContent = S.hoursLeft;
+    const pips = document.getElementById('ob-hour-pips'); pips.innerHTML = '';
+    for (let i=0;i<S.cfg.hours;i++) { const p=document.createElement('span'); p.className='ob-pip'+(i>=S.hoursLeft?' used':''); pips.appendChild(p); }
+    const nb = document.getElementById('ob-next-btn');
+    nb.disabled = S.day >= S.endDay;
+    nb.textContent = S.day >= S.endDay ? 'The council meets today' : 'Next day';
+    const left = S.endDay - S.day;
+    document.getElementById('ob-deadline').textContent = left>0 ? `${left} day${left>1?'s':''} until the council meets` : 'Report today';
+  }
+
+  function _renderSelected() {
+    const el = document.getElementById('ob-sel');
+    const sel = S.selected;
+    if (!sel) { el.innerHTML = `<div class="ob-muted">Click a house or a site on the map.</div>`; return; }
+    if (sel.type==='house') {
+      const hh = S.world.households[sel.id], visited = S.visited.has(hh.id);
+      const hasMill = S.cfg.cands.includes('mill') || S.cfg.cands.includes('contagion');
+      let h = `<div class="ob-sel-title">The ${hh.family} household</div>`;
+      h += `<div class="ob-sel-sub">${hh.members.length} residents · ${visited ? `visited on day ${S.visited.get(hh.id)}` : 'not visited yet'}${S.cfg.cands.includes('marsh') && hh.inMarsh ? ' · in the marsh zone' : ''}</div>`;
+      if (visited) h += `<div class="ob-sel-exp">Water from the ${M.SITES[hh.well].name}. Food from the ${M.SITES[hh.food].name}.</div>`;
+      h += '<div class="ob-res-list">';
+      for (const id of hh.members) {
+        const r = S.world.residents[id], st = _dotState(id);
+        const lo = _lastOnset(id), ts = _tests(id), last = ts[ts.length-1];
+        let status = st==='ill' ? `ill since day ${lo}` : st==='recovered' ? 'recovered' : st==='other' ? 'ill with something else' : st==='carrier' ? 'infected, no symptoms yet' : 'healthy';
+        if (st==='other' && M.visible(S.sim,id,S.day)!=='ill') status = 'recovered from something else';
+        let extra = '';
+        if (visited && hasMill && r.worker) extra += '<span class="ob-tag">works at the Mill</span>';
+        if (last) extra += `<span class="ob-tag ${last.pos?'pos':'neg'}">test day ${last.day}: ${last.pos?'positive':'negative'}</span>`;
+        const btn = S.cfg.tests && !(last && last.day===S.day) ? `<button type="button" class="ob-mini-btn" onclick="Outbreak.test(${id})" ${S.hoursLeft<COST.test||S.day>S.endDay?'disabled':''}>Test (1 h)</button>` : '';
+        h += `<div class="ob-res"><span class="ob-dot" style="background:${DOT[st]}"></span><div class="ob-res-main"><div><strong>${r.name}</strong> <span class="ob-muted">${status}</span></div><div>${extra}</div></div>${btn}</div>`;
+      }
+      h += '</div>';
+      if (!visited) h += `<button type="button" class="btn primary ob-wide" onclick="Outbreak.visit(${hh.id})" ${S.hoursLeft<COST.visit?'disabled':''}>Visit household (1 hour)</button>`;
+      el.innerHTML = h; return;
+    }
+    // site
+    const key = sel.id, site = M.SITES[key];
+    let h = `<div class="ob-sel-title">${key==='marsh'?'The marsh':'The '+site.name}</div>`;
+    if (key==='marsh') {
+      const inZone = S.world.residents.filter(r=>S.world.households[r.house].inMarsh);
+      const ill = inZone.filter(r=>_isCase(r.id)).length;
+      h += `<div class="ob-sel-sub">${inZone.length} residents live inside the marsh zone; ${ill} counted as ill.</div>`;
+      h += `<div class="ob-muted" style="margin-top:8px">A marsh can't be closed. Whether its air matters has to be judged from who falls ill.</div>`;
+      el.innerHTML = h; return;
+    }
+    const closed = key in S.closures;
+    h += `<div class="ob-sel-sub">${closed ? `Closed since day ${S.closures[key]}` : 'Open'}</div>`;
+    const users = S.world.residents.filter(r=>_known(r.id,key) && _exposed(r.id,key));
+    const visitedHH = [...S.visited.keys()].length;
+    if (key==='mill') h += `<div class="ob-sel-exp">${visitedHH ? `Known workers: ${users.length} (${users.filter(r=>_isCase(r.id)).length} ill)` : 'Visit households to learn who works here.'}</div>`;
+    else h += `<div class="ob-sel-exp">${visitedHH ? `Known users: ${users.length} residents in ${new Set(users.map(r=>r.house)).size} visited households (${users.filter(r=>_isCase(r.id)).length} ill)` : 'Visit households to learn who uses it.'}</div>`;
+    if (!closed) h += `<button type="button" class="btn ob-wide ob-close-btn" onclick="Outbreak.close('${key}')" ${S.hoursLeft<COST.close?'disabled':''}>Close the ${site.name} (3 hours)</button>`;
+    el.innerHTML = h;
+  }
+
+  function _renderCands() {
+    const el = document.getElementById('ob-cands'); el.innerHTML = '';
+    const t = _chipTotal();
+    document.getElementById('ob-chip-count').textContent = `${t} of 10 chips placed`;
+    for (const k of S.cfg.cands) {
+      const c = M.CANDIDATES[k], n = S.chips[k];
+      const row = document.createElement('div'); row.className = 'ob-cand';
+      row.innerHTML = `<div class="ob-cand-main"><div class="ob-cand-name">${_sw(k)}${c.name}</div><div class="ob-cand-claim">${c.claim}</div><div class="ob-chipbar">${'<i></i>'.repeat(n)}</div></div>
+        <div class="ob-chip-ctl"><button type="button" class="ob-chip-btn" ${n<=0?'disabled':''} onclick="Outbreak.chip('${k}',-1)">−</button><span>${n}</span><button type="button" class="ob-chip-btn" ${t>=10?'disabled':''} onclick="Outbreak.chip('${k}',1)">+</button></div>`;
+      el.appendChild(row);
+    }
+    document.getElementById('ob-report-btn').disabled = t !== 10;
+  }
+
+  function _rateCell(ill, n) {
+    if (!n) return `<span class="ob-muted">nobody</span>`;
+    const pct = Math.round(ill/n*100);
+    return `<div class="ob-rate"><div class="ob-bar"><div style="width:${pct}%"></div></div><span><strong>${ill}</strong>/${n} · ${pct}%</span></div>`;
+  }
+  function _renderEvidence() {
+    const tb = document.getElementById('ob-ev-body'); tb.innerHTML = '';
+    for (const k of S.cfg.cands) {
+      const c = M.CANDIDATES[k], R = _row(k);
+      const tr = document.createElement('tr');
+      tr.className = 'ob-ev-row' + (S.rowSel===k ? ' sel' : '');
+      const free = (k==='marsh'||k==='contagion') ? ' <span class="ob-free">everyone</span>' : '';
+      if (!R.an && !R.bn) tr.innerHTML = `<td>${_sw(k)}${c.row}${free}</td><td colspan="2" class="ob-muted">Visit households to fill this in.</td>`;
+      else tr.innerHTML = `<td>${_sw(k)}${c.row}${free}</td><td>${_rateCell(R.a,R.an)}</td><td>${_rateCell(R.b,R.bn)}</td>`;
+      tr.onclick = () => { S.rowSel = S.rowSel===k ? null : k; _renderEvidence(); _draw(); };
+      tb.appendChild(tr);
+    }
+    // compare
+    const [k1,k2] = S.cmp;
+    const opts = k => S.cfg.cands.map(x=>`<option value="${x}" ${x===k?'selected':''}>${M.CANDIDATES[x].name}</option>`).join('');
+    document.getElementById('ob-cmp-a').innerHTML = opts(k1);
+    document.getElementById('ob-cmp-b').innerHTML = opts(k2);
+    const out = document.getElementById('ob-cmp-out');
+    if (k1===k2) { out.innerHTML = `<div class="ob-muted">Pick two different explanations.</div>`; return; }
+    const C = _cmpCells(k1,k2), n1 = M.CANDIDATES[k1].name, n2 = M.CANDIDATES[k2].name;
+    const total = C.both.n + C.only1.n + C.only2.n + C.neither.n;
+    if (!total) { out.innerHTML = `<div class="ob-muted">You don't know anyone's exposure to both yet. Visit households first.</div>`; return; }
+    const cell = (lbl, x, key) => `<div class="ob-cell${key?' key':''}"><div class="ob-cell-lbl">${lbl}</div>${x.n ? `<div><strong>${x.ill}</strong> of ${x.n} ill</div><div class="ob-bar"><div style="width:${Math.round(x.ill/x.n*100)}%"></div></div>` : '<div class="ob-muted">nobody</div>'}</div>`;
+    out.innerHTML = `<div class="ob-cmp-grid">
+        ${cell(`${n1} and ${n2}`, C.both)}${cell(`${n1} only`, C.only1, true)}
+        ${cell(`${n2} only`, C.only2, true)}${cell('Neither', C.neither)}
+      </div>
+      <div class="ob-cmp-note">The highlighted groups are where these two explanations disagree. ${n1} predicts illness in the "${n1} only" group; ${n2} predicts it in the "${n2} only" group.</div>`;
+  }
+  function setCmp(which, val) { S.cmp[which] = val; _renderEvidence(); }
+
+  function _renderCurve() {
+    const cv = document.getElementById('ob-curve');
+    const cssW = cv.clientWidth || 600, cssH = 130, dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(cssW*dpr)) { cv.width = Math.round(cssW*dpr); cv.height = Math.round(cssH*dpr); }
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cssW,cssH);
+    const ev = M.onsets(S.sim, S.day);
+    const days = S.endDay, padL = 26, padB = 20, padT = 14, plotW = cssW-padL-8, plotH = cssH-padB-padT;
+    const bw = plotW / days;
+    const counts = Array.from({length:days+1}, ()=>({c:0,o:0}));
+    for (const e of ev) { if (e.day<1||e.day>days) continue; const ruled = _ruledOut(e.i) && _lastOnset(e.i)===e.day; if (ruled) counts[e.day].o++; else counts[e.day].c++; }
+    const maxY = Math.max(4, ...counts.map(x=>x.c+x.o));
+    // investigation window
+    ctx.fillStyle = 'rgba(74,144,64,0.07)';
+    ctx.fillRect(padL + (S.startDay-1)*bw, padT, (days-S.startDay+1)*bw, plotH);
+    // gridlines
+    ctx.strokeStyle = 'rgba(90,69,48,0.12)'; ctx.lineWidth = 1; ctx.fillStyle = '#8a7055'; ctx.font = '600 10px "IBM Plex Sans", system-ui, sans-serif'; ctx.textAlign = 'right';
+    for (let y=0; y<=maxY; y+= maxY>8?2:1) { const py = padT + plotH - y/maxY*plotH; ctx.beginPath(); ctx.moveTo(padL,py); ctx.lineTo(padL+plotW,py); ctx.stroke(); ctx.fillText(String(y), padL-5, py+3); }
+    // bars
+    for (let d=1; d<=days; d++) {
+      const x = padL + (d-1)*bw + bw*0.18, w = bw*0.64;
+      const hc = counts[d].c/maxY*plotH, ho = counts[d].o/maxY*plotH;
+      ctx.fillStyle = DOT.ill; ctx.fillRect(x, padT+plotH-hc, w, hc);
+      ctx.fillStyle = DOT.other; ctx.fillRect(x, padT+plotH-hc-ho, w, ho);
+      if (d % (days>16?2:1) === 0 || d===1) { ctx.fillStyle = d===S.day ? '#2c2015' : '#8a7055'; ctx.textAlign='center'; ctx.font = (d===S.day?'600 ':'400 ')+'10px "IBM Plex Sans", system-ui, sans-serif'; ctx.fillText(String(d), padL+(d-0.5)*bw, cssH-6); }
+    }
+    // today
+    const tx = padL + (S.day-0.5)*bw;
+    ctx.strokeStyle = 'rgba(44,32,21,0.55)'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(tx,padT); ctx.lineTo(tx,padT+plotH); ctx.stroke(); ctx.setLineDash([]);
+    // closures
+    for (const c of S.closeLog) {
+      const x = padL + (c.day-1)*bw;
+      ctx.strokeStyle = '#c05030'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+plotH); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.font = '11px sans-serif'; ctx.textAlign='left'; ctx.fillText(M.SITES[c.key].icon, x+2, padT+9);
+    }
+    ctx.textAlign = 'left'; ctx.fillStyle = '#8a7055'; ctx.font = '600 10px "IBM Plex Sans", system-ui, sans-serif';
+    ctx.fillText('investigation', padL + (S.startDay-1)*bw + 4, padT - 3);
+  }
+
+  function _renderLog() {
+    const el = document.getElementById('ob-log'); el.innerHTML = '';
+    for (const e of S.log.slice().reverse()) {
+      const d = document.createElement('div'); d.className = 'hist-entry';
+      d.innerHTML = `<div class="hist-day">Day ${e.day}</div><div class="hist-msg">${e.html}</div>`;
+      el.appendChild(d);
+    }
+  }
+  function _renderLegend() {
+    const items = [['well','Healthy'],['ill','Ill'],['recovered','Recovered']];
+    if (S.cfg.tests) items.push(['carrier','Infected, no symptoms (test)'],['other','Ill with something else (test)']);
+    let h = items.map(([k,l])=>`<span class="ob-leg"><span class="ob-dot" style="background:${DOT[k]}"></span>${l}</span>`).join('');
+    h += `<span class="ob-leg"><span class="ob-leg-check">✓</span>Visited</span>`;
+    document.getElementById('ob-legend').innerHTML = h;
+  }
+
+  /* ── Map ─────────────────────────────────────────────────── */
+  function _siteKeys() {
+    const ks = ['hillWell','riverWell','bakery','market'];
+    if (S.cfg.cands.includes('mill') || S.cfg.cands.includes('contagion')) ks.push('mill');
+    return ks;
+  }
+  const _hasMarsh = () => S.cfg.cands.includes('marsh');
+
+  function _bindCanvas() {
+    const cv = document.getElementById('ob-map');
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = W*dpr; cv.height = H*dpr;
+    if (_bound) return; _bound = true;
+    cv.addEventListener('pointermove', e => {
+      if (!S) return;
+      const hit = _hit(_xy(e));
+      const key = hit ? hit.type+':'+hit.id : null;
+      cv.style.cursor = hit ? 'pointer' : 'default';
+      if (key !== (_hover && _hover.type+':'+_hover.id)) { _hover = hit; _draw(); }
+      if (hit && hit.type==='house') {
+        const hh = S.world.households[hit.id], ill = hh.members.filter(j=>M.visible(S.sim,j,S.day)==='ill').length;
+        App.showTooltip(`<div class="htip-title">The ${hh.family} household</div><div style="font-size:11px;color:var(--ink-soft)">${hh.members.length} residents · ${ill} ill now${S.visited.has(hh.id)?' · visited':''}</div>`, e);
+      } else if (hit && hit.type==='site') {
+        App.showTooltip(`<div class="htip-title">${hit.id==='marsh'?'The marsh':M.SITES[hit.id].name}${hit.id in S.closures?' (closed)':''}</div>`, e);
+      } else App.hideTooltip();
+    });
+    cv.addEventListener('pointerleave', () => { _hover = null; App.hideTooltip(); if (S) _draw(); });
+    cv.addEventListener('click', e => {
+      if (!S) return;
+      const hit = _hit(_xy(e));
+      S.selected = hit;
+      _renderSelected(); _draw();
+    });
+  }
+  function _xy(e) { const r = document.getElementById('ob-map').getBoundingClientRect(); return { x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height }; }
+  function _hit(p) {
+    for (const k of _siteKeys()) { const s = S.world.sites[k]; if (Math.hypot(p.x-s.x,p.y-s.y) < 22) return { type:'site', id:k }; }
+    for (const hh of S.world.households) { if (Math.abs(p.x-hh.x) < 19 && p.y > hh.y-18 && p.y < hh.y+14) return { type:'house', id:hh.id }; }
+    if (_hasMarsh()) { const m = S.world.sites.marsh; if (Math.hypot(p.x-m.x,p.y-m.y) < m.r) return { type:'site', id:'marsh' }; }
+    return null;
+  }
+
+  function _kick() { if (!_raf) _raf = requestAnimationFrame(_loop); }
+  function _loop(now) {
+    _raf = null;
+    S.pulses = S.pulses.filter(p => now - p.t0 < 1300);
+    _draw(now);
+    if (S.pulses.length) _raf = requestAnimationFrame(_loop);
+  }
+
+  function _rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  function _draw(now) {
+    const cv = document.getElementById('ob-map'); if (!cv || !S) return;
+    const ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    now = now || performance.now();
+    const T = S.world, sites = T.sites;
+    // ground
+    ctx.fillStyle = '#f1e9d6'; ctx.fillRect(0,0,W,H);
+    // hill contours on the hill side
+    const hillX = T.flipX ? W-150 : 150, hillY = T.flipY ? H-120 : 120;
+    for (let i=5;i>=1;i--) { ctx.beginPath(); ctx.ellipse(hillX, hillY, 40+i*34, 26+i*22, -0.2, 0, Math.PI*2); ctx.fillStyle = `rgba(160,170,110,${0.035})`; ctx.fill(); ctx.strokeStyle = 'rgba(140,130,90,0.16)'; ctx.lineWidth = 1; ctx.stroke(); }
+    // river on the river side
+    const rx = T.flipX ? 16 : W-16;
+    ctx.beginPath(); ctx.moveTo(rx, -10);
+    for (let y=0;y<=H+10;y+=30) ctx.lineTo(rx + Math.sin(y/55)*7, y);
+    ctx.strokeStyle = '#a9cbe0'; ctx.lineWidth = 22; ctx.stroke(); ctx.strokeStyle = '#c5deec'; ctx.lineWidth = 8; ctx.stroke();
+    // lanes
+    ctx.strokeStyle = 'rgba(205,185,145,0.55)'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(40, H/2); ctx.bezierCurveTo(W*0.3, H/2-30, W*0.7, H/2+30, W-40, H/2); ctx.stroke();
+    if (_siteKeys().includes('mill')) { ctx.beginPath(); ctx.moveTo(W/2, H/2); ctx.lineTo(sites.mill.x, sites.mill.y); ctx.stroke(); }
+    ctx.lineCap = 'butt';
+    // marsh
+    if (_hasMarsh()) {
+      const m = sites.marsh, g = ctx.createRadialGradient(m.x,m.y,10,m.x,m.y,m.r);
+      g.addColorStop(0,'rgba(111,143,95,0.38)'); g.addColorStop(1,'rgba(111,143,95,0.10)');
+      ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fillStyle = g; ctx.fill();
+      const hl = S.rowSel==='marsh' || (S.selected && S.selected.id==='marsh') || (_hover && _hover.id==='marsh');
+      ctx.setLineDash([6,4]); ctx.strokeStyle = hl ? 'rgba(60,90,50,0.9)' : 'rgba(80,110,70,0.5)'; ctx.lineWidth = hl ? 2.5 : 1.5; ctx.stroke(); ctx.setLineDash([]);
+      // reeds
+      ctx.strokeStyle = 'rgba(80,110,70,0.45)'; ctx.lineWidth = 1.2;
+      for (let i=0;i<14;i++) { const a = i*2.4, rr = m.r*0.25 + (i*37)%Math.max(20,m.r*0.5); const x = m.x + Math.cos(a)*rr, y = m.y + Math.sin(a)*rr; if (x<6||x>W-6||y<6||y>H-6) continue; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-2,y-7); ctx.moveTo(x+2,y); ctx.lineTo(x+3,y-6); ctx.stroke(); }
+      const lx = Math.min(W-40, Math.max(40, m.x + (T.flipX?-1:1)*m.r*0.45)), ly = Math.min(H-14, Math.max(16, m.y + (T.flipY?-1:1)*m.r*0.55));
+      ctx.fillStyle = 'rgba(60,85,50,0.8)'; ctx.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Marsh', lx, ly);
+    }
+    // highlight lines for the selected evidence row
+    const sel = S.rowSel;
+    if (sel && sel!=='marsh' && sel!=='contagion') {
+      const target = sites[sel], col = M.SITES[sel].color;
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.55; ctx.lineWidth = 2;
+      for (const hh of T.households) {
+        if (!S.visited.has(hh.id)) continue;
+        const uses = sel==='mill' ? hh.members.some(j=>T.residents[j].worker) : (hh.well===sel || hh.food===sel);
+        if (!uses) continue;
+        ctx.beginPath(); ctx.moveTo(hh.x, hh.y); ctx.lineTo(target.x, target.y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    // houses
+    for (const hh of T.households) _drawHouse(ctx, hh, sel);
+    // sites
+    for (const k of _siteKeys()) _drawSite(ctx, k, sites[k]);
+    // pulses
+    for (const p of S.pulses) {
+      const t = (now - p.t0)/1300; if (t<0||t>1) continue;
+      const hh = T.households[p.hid];
+      ctx.beginPath(); ctx.arc(hh.x, hh.y, 14 + t*26, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(212,85,58,${0.75*(1-t)})`; ctx.lineWidth = 3*(1-t)+1; ctx.stroke();
+    }
+    // day label
+    ctx.fillStyle = 'rgba(44,32,21,0.55)'; ctx.font = '600 12px "IBM Plex Sans", system-ui, sans-serif'; ctx.textAlign = T.flipX ? 'right' : 'left';
+    ctx.fillText(`Day ${S.day}`, T.flipX ? W-12 : 12, H-10);
+  }
+
+  function _drawHouse(ctx, hh, sel) {
+    const w = 34, h = 22, x = hh.x - w/2, y = hh.y - h/2 + 2;
+    const isSel = S.selected && S.selected.type==='house' && S.selected.id===hh.id;
+    const isHov = _hover && _hover.type==='house' && _hover.id===hh.id;
+    let ring = null;
+    if (sel==='contagion' && hh.members.filter(j=>_isCase(j)).length>=2) ring = '#b04a6a';
+    if (ring) { _rr(ctx, x-5, y-12, w+10, h+17, 7); ctx.strokeStyle = ring; ctx.lineWidth = 2.5; ctx.stroke(); }
+    if (isSel || isHov) { _rr(ctx, x-4, y-11, w+8, h+15, 6); ctx.fillStyle = isSel ? 'rgba(74,144,64,0.18)' : 'rgba(44,32,21,0.06)'; ctx.fill(); if (isSel) { ctx.strokeStyle = '#2d6a2d'; ctx.lineWidth = 2; ctx.stroke(); } }
+    // roof
+    ctx.beginPath(); ctx.moveTo(x-2, y+1); ctx.lineTo(hh.x, y-9); ctx.lineTo(x+w+2, y+1); ctx.closePath();
+    ctx.fillStyle = S.visited.has(hh.id) ? '#a9875c' : '#c8a274'; ctx.fill();
+    // body
+    _rr(ctx, x, y, w, h, 3); ctx.fillStyle = '#fbf6ea'; ctx.fill(); ctx.strokeStyle = '#b9a37e'; ctx.lineWidth = 1; ctx.stroke();
+    // residents
+    const n = hh.members.length, sp = 7.6, x0 = hh.x - (n-1)*sp/2, cy = y + h/2;
+    hh.members.forEach((id,k) => {
+      const st = _dotState(id);
+      ctx.beginPath(); ctx.arc(x0 + k*sp, cy, 3.3, 0, Math.PI*2); ctx.fillStyle = DOT[st]; ctx.fill();
+      if (st==='carrier' || (st==='ill' && _tests(id).some(t=>t.pos))) { ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1; ctx.stroke(); }
+    });
+    // visited check
+    if (S.visited.has(hh.id)) {
+      ctx.beginPath(); ctx.arc(x+w+1, y-3, 5.5, 0, Math.PI*2); ctx.fillStyle = '#4a9040'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '600 8px "IBM Plex Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✓', x+w+1, y);
+    }
+  }
+
+  function _drawSite(ctx, key, s) {
+    const meta = M.SITES[key], closed = key in S.closures;
+    const isSel = S.selected && S.selected.type==='site' && S.selected.id===key;
+    const isHov = _hover && _hover.type==='site' && _hover.id===key;
+    const hl = S.rowSel===key;
+    if (isSel || isHov || hl) { ctx.beginPath(); ctx.arc(s.x, s.y, 23, 0, Math.PI*2); ctx.fillStyle = isSel ? 'rgba(74,144,64,0.22)' : hl ? meta.color+'33' : 'rgba(44,32,21,0.07)'; ctx.fill(); }
+    ctx.beginPath(); ctx.arc(s.x, s.y, 16, 0, Math.PI*2);
+    ctx.fillStyle = closed ? '#ddd3c0' : '#fffdf6'; ctx.fill();
+    ctx.strokeStyle = closed ? '#9a8a70' : meta.color; ctx.lineWidth = 3; ctx.stroke();
+    ctx.font = '15px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = closed ? 0.45 : 1; ctx.fillText(meta.icon, s.x, s.y+1); ctx.globalAlpha = 1; ctx.textBaseline = 'alphabetic';
+    if (closed) { ctx.strokeStyle = '#c05030'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(s.x-12, s.y-12); ctx.lineTo(s.x+12, s.y+12); ctx.stroke(); }
+    const below = s.y < H - 40;
+    const ly = below ? s.y + 30 : s.y - 24;
+    ctx.font = '600 11px "IBM Plex Sans", system-ui, sans-serif';
+    const label = meta.name + (closed ? ' (closed)' : '');
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(251,246,234,0.88)'; _rr(ctx, s.x - tw/2 - 5, ly - 11, tw + 10, 15, 4); ctx.fill();
+    ctx.fillStyle = closed ? '#9a5030' : '#3a2c1c'; ctx.fillText(label, s.x, ly);
+  }
+
+  /* ── Outcome ─────────────────────────────────────────────── */
+  function _truthCases(sim, day) { return sim.filter(s=>s.onset!==null && s.onset<=day).length; }
+
+  function _showResult() {
+    const truth = S.G.truth, cands = S.cfg.cands;
+    const cred = Object.fromEntries(cands.map(k=>[k, S.chips[k]/10]));
+    const brier = cands.reduce((a,k)=>a + Math.pow(cred[k] - (k===truth?1:0), 2), 0);
+    const acc = Math.round(100*(1 - brier/2));
+    const tier = acc>=90 ? 'gold' : acc>=70 ? 'silver' : 'bronze';
+    const tierLbl = { gold:'Gold', silver:'Silver', bronze:'Bronze' }[tier];
+    const T = M.CANDIDATES[truth];
+    const title = truth==='contagion' ? 'The illness was passing from person to person.' : truth==='marsh' ? 'The marsh air was making people ill.' : `The source was the ${T.name}.`;
+    App.showScreen('ob-result');
+    document.getElementById('ob-res-title').textContent = title;
+    document.getElementById('ob-res-title').className = 'outcome-title ' + (S.chips[truth]>=5 ? 'win' : 'fail');
+    document.getElementById('ob-res-sub').textContent = `You reported on day ${S.day} with ${S.chips[truth]} of 10 chips on the truth.`;
+    document.getElementById('ob-res-tier').innerHTML = `<span class="tier-badge ${tier}" style="font-size:16px;padding:6px 18px">${tierLbl}</span>`;
+    const actual = _truthCases(S.sim, S.day);
+    const counter = M.runCounterfactual(S.G, S.day, {}).cases;
+    const hoursUsed = S.cfg.hours - S.hoursLeft;
+    const box = (v,l) => `<div class="stat-box"><div class="stat-v">${v}</div><div class="stat-l">${l}</div></div>`;
+    document.getElementById('ob-res-stats').innerHTML =
+      box(acc, 'Accuracy score') + box(`${hoursUsed}/${S.cfg.hours}`, 'Hours used') + box(S.visits.length, 'Households visited') +
+      (S.cfg.tests ? box(S.testsRun, 'Lab tests') : box(S.day - S.startDay + 1, 'Days investigated')) +
+      box(actual, `Fell ill by day ${S.day}`) +
+      (S.closeLog.length ? box(counter, 'Would have, with no closures') : box(S.closeLog.length, 'Sites closed'));
+    // tables: report vs whole-town data
+    const N = S.world.residents.length;
+    const isTrueCase = i => S.sim[i].onset!==null && S.sim[i].onset<=S.day;
+    const fullRow = k => { let a=0,an=0,b=0,bn=0; for (const r of S.world.residents) { const e = k==='contagion' ? S.world.households[r.house].members.some(j=>j!==r.id && isTrueCase(j)) : M.exposures(S.world,r.id)[k]; const c = isTrueCase(r.id); if (e){an++; if(c)a++;} else {bn++; if(c)b++;} } return {a,an,b,bn}; };
+    let tbl = `<table class="reveal-table"><tr><th>Explanation</th><th>Your chips</th><th>Whole town: ill if exposed</th><th>ill if not</th></tr>`;
+    for (const k of cands) {
+      const R = fullRow(k), pa = R.an?Math.round(R.a/R.an*100):0, pb = R.bn?Math.round(R.b/R.bn*100):0;
+      tbl += `<tr class="${k===truth?'actual':''}"><td>${_sw(k)}${M.CANDIDATES[k].name}${k===truth?' (true)':''}</td><td><span class="ob-chipbar">${'<i></i>'.repeat(S.chips[k])}</span> ${S.chips[k]}</td><td>${R.a}/${R.an} · ${pa}%</td><td>${R.b}/${R.bn} · ${pb}%</td></tr>`;
+    }
+    tbl += `</table><div class="ob-table-note">The town columns use all ${N} residents and their true diagnoses as of day ${S.day}, which no investigator gets to see.</div>`;
+    document.getElementById('ob-res-tables').innerHTML = tbl;
+    document.getElementById('ob-res-reflect').innerHTML = `<strong>Looking back</strong>${_reflect(truth)}`;
+  }
+
+  function _phi(k1, k2) {
+    let n11=0,n10=0,n01=0,n00=0;
+    for (const r of S.world.residents) { const e = M.exposures(S.world,r.id); const a=e[k1], b=e[k2]; if(a&&b)n11++; else if(a)n10++; else if(b)n01++; else n00++; }
+    const d = Math.sqrt((n11+n10)*(n01+n00)*(n11+n01)*(n10+n00));
+    return d ? (n11*n00 - n10*n01)/d : 0;
+  }
+
+  function _reflect(truth) {
+    const pts = [];
+    const name = k => (k==='marsh' ? 'marsh air' : k==='contagion' ? 'person-to-person' : 'the ' + M.CANDIDATES[k].name);
+    const Name = k => { const s = name(k); return s.charAt(0).toUpperCase() + s.slice(1); };
+    const maxIncub = S.cfg.incub[1];
+    // 1. the confound
+    if (truth!=='contagion') {
+      const rivals = S.cfg.cands.filter(k=>k!==truth && k!=='contagion').map(k=>[k,_phi(truth,k)]).sort((a,b)=>b[1]-a[1]);
+      if (rivals.length && rivals[0][1] > 0.2) {
+        const rival = rivals[0][0];
+        let a=0, b=0;
+        for (const r of S.world.residents) { if (!_known(r.id,truth) || !_known(r.id,rival)) continue; const e = M.exposures(S.world,r.id); if (e[truth]&&!e[rival]) a++; if (e[rival]&&!e[truth]) b++; }
+        const sameSet = truth==='marsh' || rival==='marsh' ? 'overlap with the same households' : 'serve mostly the same households';
+        pts.push(`${Name(truth)} and ${name(rival)} ${sameSet}, so in the overall numbers both looked bad. ` +
+          (a+b ? `Among the residents you knew about, ${a} were exposed to ${name(truth)} without ${name(rival)} and ${b} the other way around. Those residents are the ones whose health separates the two explanations.`
+               : `None of the residents you visited broke that pairing, so your interview data had no way to separate the two.`));
+      }
+    } else {
+      pts.push(`Person-to-person spread shows up as illness moving through homes and workmates over time, with no single site whose users stand out. The case curve is another clue: spread between people tends to build as each case creates more.`);
+    }
+    // 2. interventions
+    const byDay = {};
+    for (const c of S.closeLog) (byDay[c.day] = byDay[c.day] || []).push(c.key);
+    const multi = Object.entries(byDay).find(([,ks])=>ks.length>1);
+    const late = S.closeLog.filter(c=>c.day > S.day - maxIncub - 1);
+    if (multi) {
+      pts.push(`You closed ${_list(multi[1].map(name))} on day ${multi[0]}. When several things change at once, a drop in cases can't tell you which change mattered.`);
+    } else if (S.closeLog.some(c=>c.key===truth) && !late.some(c=>c.key===truth)) {
+      const c = S.closeLog.find(c=>c.key===truth);
+      pts.push(`After you closed ${name(truth)} on day ${c.day}, new cases stopped once the infections already underway had appeared. Only this explanation predicts that.`);
+    } else if (S.closeLog.some(c=>c.key!==truth && !late.includes(c))) {
+      const c = S.closeLog.find(c=>c.key!==truth && !late.includes(c));
+      pts.push(`Closing ${name(c.key)} on day ${c.day} didn't stop new cases, which counts against that explanation.`);
+    } else if (late.length) {
+      pts.push(`You closed ${name(late[0].key)} on day ${late[0].day}, too close to the report for its effect to show. Infections already underway keep appearing for up to ${maxIncub} days after a closure.`);
+    } else if (truth!=='marsh' && truth!=='contagion') {
+      pts.push(`You didn't close anything. A closure changes exposure on purpose, so it can settle a question that tangled observational data leave open.`);
+    }
+    // 3. controls / free-data traps / calibration
+    if (S.visits.length && S.visits.every(v=>v.anyIll)) {
+      pts.push(`Every household you visited already had illness in it. Without healthy households to compare against, anything common in the town looks common among the sick too.`);
+    } else if (truth!=='contagion' && S.cfg.cands.includes('contagion') && S.chips.contagion>=3) {
+      pts.push(`Households share a well and a food shop, so illness clusters inside homes under every explanation here. Clustering in homes is weak evidence for person-to-person spread by itself.`);
+    } else if (truth!=='marsh' && S.cfg.cands.includes('marsh') && S.chips.marsh>=3) {
+      pts.push(`The marsh row needed no visits and covered everyone, which made it easy to lean on. But the marsh zone sits among the households of one side of town, so it picks up whatever is making that side ill.`);
+    } else if (S.chips[truth]===10) {
+      pts.push(`You put all 10 chips on the right answer, which earns the top score.`);
+    } else if (S.chips[truth]>0 && Math.max(...Object.values(S.chips)) > S.chips[truth]) {
+      pts.push(`Your top choice was wrong, but the chips you put on the right answer still counted toward your score.`);
+    } else if (S.chips[truth]===0) {
+      pts.push(`None of your chips went to the right answer, so your score is low.`);
+    }
+    return pts.slice(0,3).map(p=>`<p>${p}</p>`).join('');
+  }
+
+  /* ── Misc ───────────────────────────────────────────────── */
+  function _sw(k) { const c = (M.SITES[k] && M.SITES[k].color) || M.CANDIDATES[k].color || '#999'; return `<span class="sw" style="background:${c}"></span>`; }
+  function _list(a) { return a.length<=1 ? (a[0]||'') : a.length===2 ? `${a[0]} and ${a[1]}` : `${a.slice(0,-1).join(', ')}, and ${a[a.length-1]}`; }
+  function _log(html) { S.log.push({ day:S.day, html }); }
+  function _notif(html, type) { const el = document.getElementById('ob-notif'); el.className = 'notif vis' + (type==='good'?' good':type==='warn'?' warn':''); el.innerHTML = html; }
+  window.addEventListener('resize', () => { if (S && document.getElementById('screen-ob-game').classList.contains('active')) _renderCurve(); });
+
+  return { goSetup, start, replay, stop, randSeed, nextDay, visit, test, close, chip, setCmp, openReport, submitReport, _state:()=>S };
 })();
 
 
@@ -974,22 +2604,6 @@ document.getElementById('ob-diff-grid').addEventListener('click',e=>{
 
 </script>
 
-<script>
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (btn && !btn.hasAttribute('type')) btn.setAttribute('type','button');
-});
-window.addEventListener('error', (e) => {
-  const msg = String(e.message || '');
-  if (msg.includes('Unsafe attempt to load URL') || msg.includes('file: URLs are treated as unique security origins')) {
-    const n = document.getElementById('pf-notif');
-    if (n) {
-      n.className = 'notif vis warn';
-      n.innerHTML = 'The browser blocked a local-file navigation. This build no longer relies on external mode files; if this reappears, open the HTML from a normal folder and avoid nested file previews.';
-    }
-  }
-}, true);
-</script>
 
 </body>
 </html>
